@@ -116,26 +116,25 @@ Official logo assets are stored locally in public/brand: Cloudbreakr from https:
 
 Investigation supports exact run UUID, post ID, or user ID. User lookup covers retained staging records only and is bounded to 100 posts; matching runs are bounded to 100, with an explicit limitation message. It creates no indexes and makes no writes. IDs remain strings.
 
-The separate Live demo screen uses 21/11/2026 (Dummy), local sample counters, and animated charts. Queue and Scheduler signals are examples, not AWS measurements. It performs no polling. Motion respects prefers-reduced-motion.
+The red Live (Dummy) header control opens a simulated popup dated 21/11/2026. It performs no polling.
 
 AWS file selection immediately replaces the local snapshot; leaving the AWS tab or refreshing clears it. Select all relevant CloudWatch streams in the job time window: execution environments have separate streams, and last-event time is not start time. Automatic AWS retrieval is not enabled.
 
 
-## In-place latest-job activity and staging filters
+## Current monitoring behavior (22 Nov 2026)
 
-The header status opens latest-job activity inside the existing dashboard content area. It always uses the latest job snapshot, independently of an older selected report job. Activity remains inferred at manual refresh, not a worker heartbeat. The Dummy selector inside that panel previews states for 21/11/2026; it does not affect real report cards or invoke AWS. The former standalone Live demo navigation has been removed. Job AI estimates join usage events to the latest job through run IDs.
+AWS **Job cost estimate** automatically uses recorded job runtimes and worker counts; no calculator inputs are required. It shows an ARM–x86 range using Singapore tier-1 rates, with formula tooltips and a separate observed-log subtotal. The full-job model assumes the 1024 MB configuration seen in the partial logs applies to all workers. Application start/finish times are a runtime proxy, not Lambda billed duration. SQS assumes three small-message actions per recorded worker (send, receive, delete), with fetch on FIFO and embedding on standard queues. Scheduler assumes one kickoff. Free allowances, CloudWatch, networking, KMS, missing invocations, polling, batching, and discounts are excluded. This is an estimate, not an AWS bill. The supplied job currently gives approximately $0.076905–$0.093490 before allowances.
 
-Staging supports exact string post/user IDs, embedding status, and publication status, with five posts per page. Rows open a bounded Details/Full caption dialog. Full captions paginate in Unicode code points, 450 per page. No embedding vectors or sensitive worker tokens are exposed.
+Invocation request IDs open observed duration, billed compute, memory, formula-derived cost and available log events. Application events are linked only within an unambiguous START/END window in the same export. An available application run ID opens the run/post investigator. REPORT alone does not prove success. Custom imports expose REPORT metrics; additional event detail is available for the bundled snapshot.
 
-The header uses the standalone transparent Cloudbreakr symbol from https://corporate.cloudbreakr.com/wp-content/uploads/2024/05/cropped-logo-Cloudbreark-small-192x192.png alongside the Cloudbreakr title. The Instagram pipeline mark is a custom outline SVG with no background.
+Live opens in a popup. The red **Live (Dummy)** header button always identifies simulated data. Real live status remains hidden without recent unfinished activity. Fetch, embedding and extraction appear concurrently; missing real progress denominators are marked unavailable. Dummy refresh changes local sample counters only. Captions now use a continuous, bounded scroll area and copy the entire caption, without splitting it into pages. Popups have entry transitions, tab skeletons and reduced-motion support.
 
-AWS monitoring includes a How to download logs guide for Search all log streams and Actions > Download Search Results. Imports remain local and ephemeral.
-## Live/report separation and bundled CloudWatch snapshot
+### Vercel `/api/dashboard` 503
 
-The default job is now the newest source job that has source_done=true, retained staging posts, and zero unresolved retained posts. Jobs without retained evidence are not assumed complete. The header live indicator is shown only for recent unfinished activity (fetching, embedding, or attention) and is hidden for completed, stale, idle, or unavailable snapshots. It is inferred on refresh, not a worker heartbeat. Clicking it replaces the content area with live-only details and hides completed-report cards and filters. The separate Live preview (Dummy) navigation uses simulated values dated 21/11/2026 and never impersonates real activity.
+The supplied production request ran for 8.05 seconds, consistent with the configured 8-second MongoDB server-selection timeout; this is evidence, not a confirmed diagnosis. Middleware succeeded. Vercel's HTTP external-request summary does not establish whether a MongoDB protocol connection was attempted.
 
-The four supplied CloudWatch exports are bundled in data/cloudwatch/full-20261119-v1.json, preserving their original CSV contents. The authenticated /api/aws-snapshot route returns deduplicated REPORT records or downloads an original CSV by allowlisted file index. No raw logs are placed in public/. Each original download was verified byte-for-byte against the supplied file.
+1. Confirm server-only `AUTOMATION_IG_MONGO_URI`, `AUTOMATION_IG_MONGO_DATABASE`, and the configured staging/state/usage collection variables exist in **Vercel Production**, then redeploy. Local `.env` does not configure the deployed project. Keep `DASHBOARD_PASSWORD` server-only too.
+2. Verify Atlas cluster availability, database-user credentials/read permissions, and Network Access for the deployment's outbound addresses. A developer laptop allowlist entry does not cover Vercel. The browser's remote Vercel IP is not the function's outbound IP. Do not disable TLS or dashboard authentication.
+3. The updated API returns a sanitized diagnostic code and reference: `MONGO_CONFIG`, `MONGO_AUTH`, `MONGO_PERMISSION`, `MONGO_NETWORK`, `MONGO_CONNECTION_TIMEOUT`, or `MONGO_QUERY_TIMEOUT`. Match the reference in Vercel runtime logs. Raw credentials, URI and database messages are never returned or logged.
 
-Coverage: 800 exported events, 136 unique REPORT requests, no duplicate REPORT request IDs, 106.144 billed seconds, 106.144 GB-seconds, peak used memory 194 MB. These are partial exports, not full-job coverage. No AWS dollar bill is inferred. The UI provides Usage summary, Files & downloads, and Invocation records tabs; custom imports remain ephemeral browser data.
-
-IDs and events have explicit labels. Linked posts support paginated full-caption viewing and copying the complete caption. The country selector uses a local Hong Kong SVG flag (https://flagcdn.com/hk.svg), and headings use Manrope. Browser checks covered live/completed separation with an isolated response fixture, absence of a live indicator for the actual completed job, full-caption clipboard contents, original file downloads, and mobile panel fit. No database writes were performed.
+Report queries now obtain matching run IDs from the day's aggregated events instead of performing a correlated lookup for every run. No database indexes or data are modified. Production connectivity must still be verified after deployment; local success does not prove Vercel access.

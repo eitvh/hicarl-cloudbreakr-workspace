@@ -1,11 +1,12 @@
 ﻿import "server-only";
+import { assertMongoConfiguration } from "@/lib/mongo-diagnostics";
 import { MongoClient, type Document } from "mongodb";
 
 const globalMongo = globalThis as typeof globalThis & { mongoRead?: Promise<MongoClient> };
 const options = { maxTimeMS: 15000 };
 export async function dashboard(params: URLSearchParams) {
   const env = process.env;
-  if (!env.AUTOMATION_IG_MONGO_URI) throw new Error("configuration");
+  assertMongoConfiguration(env);
   globalMongo.mongoRead ??= new MongoClient(env.AUTOMATION_IG_MONGO_URI, {
     serverSelectionTimeoutMS: 8000, maxPoolSize: 5,
   }).connect().catch(error => { globalMongo.mongoRead = undefined; throw error; });
@@ -45,14 +46,15 @@ export async function dashboard(params: URLSearchParams) {
     estimated_usd:{$sum:"$estimated_cost_usd"},
     unknown_cost_calls:{$sum:{$cond:[{$eq:[{$ifNull:["$estimated_cost_usd",null]},null]},1,0]}},
   };
-  const [groups,posts,postCount,events,runDocs,costs] = await Promise.all([
+  const [groups,posts,postCount,events,costs] = await Promise.all([
     staging.aggregate([{$match:filter},{$group:{_id:{embed:"$jobs.embed.status",publish:"$publish_status"},count:{$sum:1}}}],options).toArray(),
     staging.find(postFilter,{...options,projection:{post_id:1,user_id:1,caption:1,created_at:1,synced_at:1,published_at:1,embedding_model:1,"jobs.embed.status":1,"jobs.embed.attempts":1,"jobs.embed.error_type":1,"jobs.embed.reason":1,publish_status:1}}).sort({_id:1}).skip((page-1)*5).limit(5).toArray(),
     staging.countDocuments(postFilter,options),
     usage.aggregate([{$match:{reporting_date_my:date,record_type:{$in:["post_count","api_usage"]}}},{$group:{_id:{run_id:"$run_id",type:"$record_type",metric:"$metric",operation:"$operation",outcome:"$outcome"},...groupFields}}],options).toArray(),
-    usage.aggregate([{$match:{record_type:"run"}},{$lookup:{from:usage.collectionName,let:{run:"$_id"},pipeline:[{$match:{$expr:{$eq:["$run_id","$$run"]},reporting_date_my:date,record_type:{$in:["post_count","api_usage"]}}},{$limit:1},{$project:{_id:1}}],as:"dayEvents"}},{$match:{$or:[{reporting_date_my:date},{"dayEvents.0":{$exists:true}}]}},{$project:{stage:1,status:1,locationId:1,started_at:1,finished_at:1}}],options).toArray(),
     usage.aggregate([{$match:costMatch},{$group:{_id:{outcome:"$outcome",pricing:"$pricing.version",source:"$usage_source"},...groupFields}}],options).toArray(),
   ]);
+  const eventRunIds=[...new Set(events.map(e=>e._id.run_id).filter((id):id is string=>typeof id==="string"))];
+  const runDocs=await db.collection<Document & {_id:string}>(usage.collectionName).find({record_type:"run",$or:[{reporting_date_my:date},{_id:{$in:eventRunIds}}]},{...options,projection:{stage:1,status:1,locationId:1,started_at:1,finished_at:1}}).toArray();
   const totals = {counts:{} as Record<string,number>,estimated_usd:0,unknown_cost_calls:0,input_tokens:0,output_tokens:0};
   const runs = runDocs.map(run=>({
     run_id:String(run._id),stage:run.stage,status:run.status,locationId:run.locationId,
@@ -80,7 +82,7 @@ export async function dashboard(params: URLSearchParams) {
   }
   const report = {reporting_date_my:date,run_count:runs.length,totals,runs};
   const jobRuns = job ? await usage.find({record_type:"run",job_id:String(job._id)},{
-    ...options,projection:{_id:1,started_at:1,finished_at:1,status:1}
+    ...options,projection:{_id:1,stage:1,started_at:1,finished_at:1,status:1}
   }).toArray() : [];
   const jobRunIds = jobRuns.map(r=>r._id);
   const lastFinished = jobRuns.map(r=>r.finished_at).filter(Boolean).sort((a,b)=>new Date(b).getTime()-new Date(a).getTime())[0] || null;
@@ -97,7 +99,23 @@ export async function dashboard(params: URLSearchParams) {
     usage.aggregate([{$match:{record_type:"run",job_id:job ? String(job._id) : "__none__"}},{$group:{_id:{stage:"$stage",status:"$status"},count:{$sum:1}}}],options).toArray(),
     usage.aggregate([{$match:{record_type:"api_usage",run_id:{$in:jobRunIds}}},{$group:{_id:"$operation",...groupFields}}],options).toArray()
   ]);
+  const embedRuns=jobRuns.filter(r=>r.stage==="lambda-embed");
+  const embedStarted=embedRuns.map(r=>r.started_at).filter(Boolean).sort((a,b)=>new Date(a).getTime()-new Date(b).getTime())[0]||null;
+  const embedFinished=embedRuns.map(r=>r.finished_at).filter(Boolean).sort((a,b)=>new Date(b).getTime()-new Date(a).getTime())[0]||null;
+  const failuresForDetail=apiDetails[0]?.api_failed||[];
+  if(failuresForDetail.length){
+    const ids=failuresForDetail.map((f:Document)=>f.post_id);
+    const [currentPosts,laterAttempts]=await Promise.all([
+      staging.find({post_id:{$in:ids}},{...options,projection:{_id:0,post_id:1,publish_status:1,"jobs.embed.status":1,"jobs.embed.attempts":1}}).toArray(),
+      usage.aggregate([{$match:{record_type:"api_usage",operation:"embedding",post_id:{$in:ids}}},{$sort:{recorded_at:-1}},{$group:{_id:"$post_id",latest:{$first:{recorded_at:"$recorded_at",outcome:"$outcome",run_id:"$run_id",error_type:"$error_type"}}}}],options).toArray()
+    ]);
+    for(const failure of failuresForDetail){failure.currentPost=currentPosts.find(p=>p.post_id===failure.post_id);const latest=laterAttempts.find(a=>a._id===failure.post_id)?.latest;failure.laterAttempt=latest&&new Date(latest.recorded_at).getTime()>new Date(failure.recorded_at).getTime()?latest:null;}
+  }
+  const timedRuns=jobRuns.filter(r=>r.started_at&&r.finished_at&&new Date(r.finished_at).getTime()>=new Date(r.started_at).getTime());
+  const totalRunSeconds=timedRuns.reduce((n,r)=>n+(new Date(r.finished_at).getTime()-new Date(r.started_at).getTime())/1000,0);
   const timing = {
+    totalRunSeconds,timedRunCount:timedRuns.length,
+    embedStarted,embedFinished,embedSeconds:embedStarted&&embedFinished?(new Date(embedFinished).getTime()-new Date(embedStarted).getTime())/1000:null,
     sourceSeconds:job?.source_finished_at && job?.created_at ? (new Date(job.source_finished_at).getTime()-new Date(job.created_at).getTime())/1000 : null,
     observedSeconds:lastFinished && job?.created_at ? (new Date(lastFinished).getTime()-new Date(job.created_at).getTime())/1000 : null,
     lastFinished,runCount:jobRuns.length,unfinishedRuns:jobRuns.filter(r=>!r.finished_at).length
@@ -123,7 +141,7 @@ export async function dashboard(params: URLSearchParams) {
 export interface Job { _id:string; benchmark_id:string;location_id:number;date_from:string;date_until:string;rows_scanned:number;source_done:boolean;created_at:string;updated_at?:string;source_finished_at?:string;cursor?:{user_done:boolean} }
 export interface ApiTotals {count:number;input_tokens:number;output_tokens:number;estimated_usd:number;unknown_cost_calls:number}
 export interface Run {run_id:string;stage:string;status:string;locationId:number|null;counts:Record<string,number>;api:Record<string,Record<string,ApiTotals>>}
-export interface ApiDetail { _id:string;post_id:string;run_id:string;model?:string;recorded_at:string;finished_at?:string;input_tokens?:number;output_tokens?:number;estimated_cost_usd?:number|null;error_type?:string;usage_source?:string }
+export interface ApiDetail { _id:string;post_id:string;run_id:string;model?:string;recorded_at:string;finished_at?:string;input_tokens?:number;output_tokens?:number;estimated_cost_usd?:number|null;error_type?:string;usage_source?:string;currentPost?:{publish_status?:string;jobs?:{embed?:{status?:string;attempts?:number}}};laterAttempt?:{recorded_at:string;outcome:string;run_id:string;error_type?:string}|null }
 export interface DashboardData {
  jobCosts:({ _id:string } & ApiTotals)[];
  overallCosts:({ _id:string } & ApiTotals)[];
@@ -132,7 +150,7 @@ export interface DashboardData {
  activity:{state:string;lastActivity:string|null;outstanding:number;failures:number;processing:number;pending:number};
 
  extraction:({ _id:{outcome:string;pricing:string;source:string} } & ApiTotals)[];
- timing:{sourceSeconds:number|null;observedSeconds:number|null;lastFinished:string|null;runCount:number;unfinishedRuns:number};
+ timing:{totalRunSeconds:number;timedRunCount:number;embedStarted:string|null;embedFinished:string|null;embedSeconds:number|null;sourceSeconds:number|null;observedSeconds:number|null;lastFinished:string|null;runCount:number;unfinishedRuns:number};
  apiDetails:Record<string,ApiDetail[]>;
 
  jobs:Job[];job:Job|null;lastJob:Job|null;dates:string[];finishedDates:string[];date:string;finished:string;status:string;page:number;outputCount:number;stagingCount:number;postCount:number;refreshedAt:string;
