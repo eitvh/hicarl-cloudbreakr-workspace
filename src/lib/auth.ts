@@ -3,11 +3,11 @@ export const SESSION_COOKIE="dashboard_session";
 export const SESSION_SECONDS=8*60*60;
 const developmentKey=randomBytes(32).toString('hex');
 function equal(a:string,b:string){return timingSafeEqual(createHash('sha256').update(a).digest(),createHash('sha256').update(b).digest());}
-export function credentialsMatch(username:string,password:string){return equal(username,process.env.DASHBOARD_USERNAME||'admin')&&equal(password,process.env.DASHBOARD_PASSWORD||'123456');}
+export function credentialsMatch(username:string,password:string){const expected=process.env.DASHBOARD_PASSWORD;return !!expected&&equal(username,process.env.DASHBOARD_USERNAME||'admin')&&equal(password,expected);}
 function signingKey(){
  const secret=process.env.DASHBOARD_SESSION_SECRET||process.env.AUTOMATION_IG_MONGO_URI||(process.env.NODE_ENV!=='production'?developmentKey:'');
- if(!secret)throw new Error('Session configuration unavailable');
- return createHmac('sha256',secret).update('dashboard-session-v1|'+(process.env.DASHBOARD_USERNAME||'admin')+'|'+(process.env.DASHBOARD_PASSWORD||'123456')).digest();
+ if(!secret||!process.env.DASHBOARD_PASSWORD)throw new Error('Session configuration unavailable');
+ return createHmac('sha256',secret).update('dashboard-session-v1|'+(process.env.DASHBOARD_USERNAME||'admin')+'|'+process.env.DASHBOARD_PASSWORD).digest();
 }
 export function createSession(now=Date.now()){
  const payload=Buffer.from(JSON.stringify({exp:Math.floor(now/1000)+SESSION_SECONDS,nonce:randomBytes(16).toString('hex')})).toString('base64url');
