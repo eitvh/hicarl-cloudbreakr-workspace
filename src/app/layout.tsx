@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Geist, Geist_Mono, Manrope } from "next/font/google";
 import "./globals.css";
+import "./dashboard.css";
+
+const headingFont = Manrope({variable:"--font-heading-display",subsets:["latin"]});
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -21,7 +24,8 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      suppressHydrationWarning
+      className={`dark ${geistSans.variable} ${geistMono.variable} ${headingFont.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">{children}</body>
     </html>
