@@ -16,6 +16,7 @@ import { StagingPosts } from "@/components/staging-posts";
 import { RunInspector } from "@/components/run-inspector";
 import { ActivityStatus } from "@/components/activity-status";
 import { CostChart } from "@/components/activity-chart";
+import { LogoutButton } from "@/components/logout-button";
 import { Overview } from "@/components/overview";
 import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -136,6 +137,7 @@ export function DashboardView() {
         const locked=key==="extraction"&&!data?.extraction.length;
         return <TooltipProvider key={key}><Tooltip><TooltipTrigger render={<button type="button" className={tab===key?"selected":""} aria-current={tab===key?"page":undefined} aria-disabled={locked} onClick={()=>{if(!locked)changeTab(key);}}/>}>{locked&&<Lock size={14}/>}<span>{label}</span></TooltipTrigger>{locked&&<TooltipContent side="right">No extraction API records are linked to this job. Lambda extraction is currently disabled.</TooltipContent>}</Tooltip></TooltipProvider>;
       })}
+      <LogoutButton/>
       </nav>
       <section key={tab} className="dash-content" aria-busy={busy} aria-live="polite">
       {busy ? <div className="dash-skeleton" role="status"><span className="sr-only">Loading dashboard content</span><Skeleton className="h-8 w-48"/><div className="grid grid-cols-2 gap-4"><Skeleton className="h-24"/><Skeleton className="h-24"/></div><Skeleton className="h-10"/><Skeleton className="h-10"/><Skeleton className="h-10"/></div> : !data ? <div className="dash-empty">Monitoring data is unavailable. Retry the connection above.</div> : <>

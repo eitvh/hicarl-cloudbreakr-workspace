@@ -61,11 +61,9 @@ Run npm.cmd run dev locally. Select the source job and the Malaysia usage event
 date (for the documented benchmark, posts are dated November 19 while usage
 was recorded November 20). Staging lists omit vectors and paginate 5 posts.
 
-Set DASHBOARD_PASSWORD in Vercel server environment settings before deployment.
-Production requests are blocked until configured; HTTP Basic authentication
-accepts any username and that password. Use HTTPS. Local development is unlocked
-unless a password is set. Prefer a MongoDB user restricted to read access.
-Never prefix MongoDB credentials with NEXT_PUBLIC_.
+The /login page uses username admin and password 123456 by default, as requested. Server-only DASHBOARD_USERNAME and DASHBOARD_PASSWORD override these defaults; if Vercel already has DASHBOARD_PASSWORD, set it to the intended password and redeploy. The form replaces browser Basic authentication and applies locally and in production. Dashboard APIs and original-log downloads require a signed, HttpOnly, SameSite=Lax session cookie (Secure over HTTPS), expiring after eight hours. Logout is at the bottom of the navigation panel and clears the cookie.
+
+DASHBOARD_SESSION_SECRET can supply a stable random session-signing secret. When absent, the configured server-only MongoDB URI provides the secret material; production without either fails closed at sign-in. Credentials are included in key derivation, so changing credentials invalidates existing sessions. Session data contains only expiry and a random nonce, never the password or URI. MongoDB is not used to store sessions. Never prefix credentials or session secrets with NEXT_PUBLIC_.
 
 Usage estimates use stored event pricing, not current environment rates.
 AWS infrastructure billing is not included. Report run counts match the Python report: runs started on the selected Malaysia event date plus earlier runs with events on that date. Includes per-run counts and API outcomes, totals, and a JSON export. Selectable dates come from stored report records; the latest available date is the default.
