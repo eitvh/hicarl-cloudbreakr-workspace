@@ -59,7 +59,7 @@ creation, Lambda invocation, or AI calls are implemented.
 
 Run npm.cmd run dev locally. Select the source job and the Malaysia usage event
 date (for the documented benchmark, posts are dated November 19 while usage
-was recorded November 20). Staging lists omit vectors and paginate 5 posts.
+was recorded November 20). Staging lists omit vectors and paginate 4 posts.
 
 The /login page defaults to username admin (overridable with server-only DASHBOARD_USERNAME). The password must be supplied through server-only DASHBOARD_PASSWORD; there is no fallback password. Missing or empty DASHBOARD_PASSWORD disables sign-in and invalidates sessions. Configure it in local .env and Vercel Production environment variables; redeploy after changing Vercel variables. The form replaces browser Basic authentication and applies locally and in production. Dashboard APIs and original-log downloads require a signed, HttpOnly, SameSite=Lax session cookie (Secure over HTTPS), expiring after eight hours. Logout is at the bottom of the navigation panel and clears the cookie.
 
@@ -92,7 +92,7 @@ AWS monitoring currently explains the proposed read-only CloudWatch integration.
 Dropdowns use shadcn Select with themed popups. Run investigation separates Summary, Linked posts, and API results into bounded tabs. Posts and API groups paginate three per page; the backdrop and Escape dismiss the dialog.
 
 
-The dashboard uses fixed side navigation, identical metric cards across sections, a post-outcome donut, and report event bars. Staging is paginated five posts at a time; run details are paginated six at a time and open in a dialog. Metric definitions and cost scope are available through keyboard-accessible info tooltips. The overview was checked in headless Edge at desktop, laptop and phone viewport sizes.
+The dashboard uses fixed side navigation, identical metric cards across sections, a post-outcome donut, and report event bars. Staging is paginated four posts at a time; run details are paginated six at a time and open in a dialog. Metric definitions and cost scope are available through keyboard-accessible info tooltips. The overview was checked in headless Edge at desktop, laptop and phone viewport sizes.
 
 
 ## HK monitoring and investigations
@@ -136,3 +136,11 @@ The supplied production request ran for 8.05 seconds, consistent with the config
 3. The updated API returns a sanitized diagnostic code and reference: `MONGO_CONFIG`, `MONGO_AUTH`, `MONGO_PERMISSION`, `MONGO_NETWORK`, `MONGO_CONNECTION_TIMEOUT`, or `MONGO_QUERY_TIMEOUT`. Match the reference in Vercel runtime logs. Raw credentials, URI and database messages are never returned or logged.
 
 Report queries now obtain matching run IDs from the day's aggregated events instead of performing a correlated lookup for every run. No database indexes or data are modified. Production connectivity must still be verified after deployment; local success does not prove Vercel access.
+
+Completed-job summaries use the Next.js server Data Cache for up to 24 hours. Live and unconfirmed summaries expire after 60 seconds. A summary includes daily report aggregates: changing activity dates reuses the same snapshot rather than rerunning MongoDB reports. Tab switches retain the summary. Refresh from MongoDB invalidates report and post-page caches. All database access remains read-only.
+
+Comparison starts with two job columns and a shared metric column. Each column supports Lambda, Fargate, or Manual, using server-cached comparison responses and short-lived browser reuse. The disabled Save button is a preview only; bookmarks are not stored.
+
+Comparison metrics are grouped into Posts, Embedding, Extraction, Costs and Efficiency. Post totals are recorded events except Unique processed, which is distinct per activity day. API outcomes count attempts, including retries. Operation token and cost figures come from usage records for the selected job/date. The observed activity span is the first-to-last event interval, including idle gaps. Total estimates are labeled partial; no AWS cost is invented for manual runs.
+
+Staging uses the authenticated `/api/staging` endpoint independently of dashboard summaries, with four records per page and Previous/Next navigation (no expensive full joined count). The first request builds a job-scoped post/day membership list from usage in one aggregation. A bounded, compressed in-memory cache shares this list across dates/pages; cached post pages use Next.js Data Cache. A new server instance may rebuild the membership list. Current staging captions/statuses are not historical states. API detail dialogs load through `/api/api-calls` only when opened.

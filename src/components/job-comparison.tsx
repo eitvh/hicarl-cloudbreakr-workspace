@@ -1,103 +1,46 @@
-"use client";
+﻿"use client";
+import {Fragment,useEffect,useState,useEffectEvent} from 'react';
+import {Bookmark,Plus,X,Maximize2,Download,Loader2} from 'lucide-react';
+import type {DashboardData} from '@/lib/dashboard';
+import type {PipelineSource} from '@/lib/pipeline-source';
+import {DashboardSelect} from '@/components/dashboard-select';
+import {Button} from '@/components/ui/button';
+import {Tooltip,TooltipProvider,TooltipTrigger,TooltipContent} from '@/components/ui/tooltip';
+import {Dialog,DialogContent,DialogTitle,DialogDescription} from '@/components/ui/dialog';
 
-import { useEffect, useRef, useState } from "react";
-import type { DashboardData } from "@/lib/dashboard";
-import { Card } from "@/components/ui/card";
-
-const postLabels: Record<string,string> = {synced:"Synced posts", embedding_completed:"Embedding completed", embedding_skipped:"Embedding skipped", embedding_failed:"Embedding failed", published:"Published posts"};
-const ai = "AI estimation cost (USD)";
-const avg = "Average AI cost per processed post (USD)";
-const aws = "AWS runtime estimate (USD)";
-const control = "w-full min-w-0 rounded-md border bg-background px-2 py-1.5 text-sm";
-type Selection = { approach: string; country: string; job: string; date: string };
-const empty: Selection = { approach: "", country: "", job: "", date: "" };
-
-function ComparisonTable({ index, remove }: { index: number; remove?: () => void }) {
-  const [selected, setSelected] = useState(empty);
-  const [manualValues, setManualValues] = useState<Record<string,string>>({});
-  const [snapshot, setSnapshot] = useState<{ key: string; data?: DashboardData; error?: string }>();
-  const [retry, setRetry] = useState(0);
-  const { approach, country, job, date } = selected;
-  const manual = approach === "manual";
-  const key = approach && !manual && country === "hk"
-    ? new URLSearchParams({ source: approach, job, view: "comparison" }).toString() : "";
-  useEffect(() => {
-    if (!key) return;
-    const controller = new AbortController();
-    async function load() {
-      try {
-        const response = await fetch("/api/dashboard?" + key, { signal: controller.signal, cache: "no-store" });
-        if (!response.ok) throw Error();
-        const data: DashboardData = await response.json();
-        if (!controller.signal.aborted) setSnapshot({ key, data });
-      } catch {
-        if (!controller.signal.aborted) setSnapshot({ key, error: "Could not load job data." });
-      }
-    }
-    void load();
-    return () => controller.abort();
-  }, [key, retry]);
-  const current = snapshot?.key === key ? snapshot : undefined;
-  const data = current?.data;
-  const timeline = data?.job?._id === job ? data.timeline : [];
-  const days = data?.job?._id === job ? data.comparison : [];
-  const day = days.find(d => d.date === date);
-  const dates = [...new Set([...days.map(d => d.date), ...timeline.map(point => point._id.slice(0, 10))])].sort().reverse();
-  const points = timeline.filter(point => point._id.slice(0, 10) === date);
-  const totals = points.reduce((sum, point) => ({
-    calls: sum.calls + point.calls, failed: sum.failed + point.failed,
-    tokens: sum.tokens + point.tokens, cost: sum.cost + point.cost,
-  }), { calls: 0, failed: 0, tokens: 0, cost: 0 });
-  const postKeys = [...new Set([...Object.keys(postLabels), ...Object.keys(day?.posts ?? {})])];
-  const metrics = ["Processed posts", ...postKeys.map(k => postLabels[k] ?? k.replaceAll("_"," ")), "API calls", "Failed API calls", "Input tokens", ai, avg, aws];
-  const processed = manual ? Number(manualValues["Processed posts"]) : day?.processed ?? 0;
-  const cost = manual ? Number(manualValues[ai] || NaN) : totals.cost;
-  const average = processed > 0 && Number.isFinite(cost) ? (cost/processed).toFixed(6) : "\u2014";
-  const values = [processed, ...postKeys.map(k => day?.posts[k] ?? 0), totals.calls, totals.failed, totals.tokens, totals.cost.toFixed(6), average, day?.aws?.toFixed(6) ?? "Unavailable"];
-  function change(update: Partial<Selection>) {
-    setSelected({ ...selected, ...update });
-    setManualValues({});
-  }
-  const unavailable = approach && country && !manual && country !== "hk";
-  return <Card className="comparison-card min-w-0 p-4">
-    <div className="flex justify-between gap-2"><h3 className="font-semibold">Job comparison {index}</h3>{remove && <button type="button" className="text-sm underline" aria-label={"Remove comparison "+index} onClick={remove}>Remove</button>}</div>
-    <div className="comparison-filters">
-    <label>Approach<select className={control} value={approach} onChange={e => change({ ...empty, approach: e.target.value })}>
-      <option value="">Select approach</option><option value="manual">Manual</option><option value="lambda">Lambda</option><option value="fargate">Fargate</option>
-    </select></label>
-    <label>Country<select className={control} value={country} disabled={!approach} onChange={e => change({ country: e.target.value, job: "", date: "" })}>
-      <option value="">Select country</option><option value="hk">Hong Kong</option><option value="my">Malaysia</option><option value="sg">Singapore</option>
-    </select></label>
-    <label>Job{manual ? <input className={control} disabled={!country} value={job} placeholder="Enter job name" onChange={e => change({ job: e.target.value, date: "" })}/> :
-      <select className={control} value={job} disabled={!data?.jobs.length} onChange={e => change({ job: e.target.value, date: "" })}>
-        <option value="">Select job</option>{data?.jobs.map(j => <option key={j._id} value={j._id}>{j.benchmark_id} · {j.date_from} – {j.date_until} · {j._id}</option>)}
-      </select>}</label>
-    <label>Activity date{manual ? <input type="date" className={control} disabled={!job.trim()} value={date} onChange={e => change({ date: e.target.value })}/> :
-      <select className={control} disabled={!dates.length} value={date} onChange={e => change({ date: e.target.value })}>
-        <option value="">Select date</option>{dates.map(day => <option key={day}>{day}</option>)}
-      </select>}</label>
-    </div>
-    <div role="status" className="text-sm text-muted-foreground">{unavailable ? "No connected pipeline for this country." : current?.error ?
-      <>{current.error} <button className="underline" onClick={() => { setSnapshot(undefined); setRetry(retry + 1); }}>Retry</button></> :
-      key && !current ? "Loading jobs and usage…" : data && !data.jobs.length ? "No jobs available." :
-      job && data && !dates.length ? "No recorded activity for this job." : manual && date ? "Enter the figures from your manual run." : null}</div>
-    <table className="comparison-metrics w-full"><caption className="sr-only">Statistics and costs for comparison {index}</caption>
-      <thead><tr><th className="text-left">Metric</th><th className="text-right">Value</th></tr></thead>
-      <tbody>{metrics.map((metric, i) => <tr className="border-t" key={metric}><th scope="row" className="py-2 text-left font-normal">{metric}</th>
-        <td className="text-right">{manual && date && metric === avg ? average : manual && date ? <input type="number" min="0" step={metric === ai || metric === aws ? "any" : "1"} className={control} aria-label={metric} value={manualValues[metric] ?? ""} onChange={e => { setManualValues({ ...manualValues, [metric]: e.target.value }); }}/> :
-          date && (day || points.length) ? values[i].toLocaleString() : "—"}</td></tr>)}</tbody>
-    </table>
-  </Card>;
+type Selection={country:string;id:number;source:PipelineSource;job:string;date:string};
+const memo=new Map<string,DashboardData>();
+const shortDate=(value:string)=>value==='all'?'All activity dates':new Date(value+'T00:00:00Z').toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric',timeZone:'UTC'});
+const groups=[{name:'Posts',rows:['Fetched events','Published events','Unique processed']},{name:'Embedding',rows:['Completed / skipped / failed','API succeeded / failed','Input tokens']},{name:'Extraction',rows:['Completed / skipped / failed','API succeeded / failed','Input / output tokens']},{name:'Costs',rows:['Embedding estimate','Extraction estimate','AWS estimate','Total known estimate','Unknown-cost calls']},{name:'Efficiency',rows:['AI cost per processed post','Observed activity span']}];
+function metric(data:DashboardData|undefined,date:string,section:string,row:string){const d=data?.comparison.find(d=>d.date===date);if(!d)return 'Not available';const n=(v:number)=>v.toLocaleString(),money=(v:number)=>'$'+v.toFixed(6),ops=d.operations||{},embedding=ops.embedding,extraction=ops.extraction;const cost=Object.values(ops).reduce((v,o)=>v+o.cost,0),unknown=Object.values(ops).reduce((v,o)=>v+o.unknown,0);
+ if(section==='Posts')return n(row==='Fetched events'?d.posts.synced||0:row==='Published events'?d.posts.published||0:d.processed);
+ if(section==='Embedding'||section==='Extraction'){const op=section==='Embedding'?'embedding':'extraction',api=ops[op];const used=!!api||Object.keys(d.posts).some(k=>k.startsWith(op+'_'));if(!used)return 'Not used';if(row.startsWith('Completed'))return [d.posts[op+'_completed']||0,d.posts[op+'_skipped']||0,d.posts[op+'_failed']||0].map(n).join(' / ');if(row.startsWith('API'))return api?n(api.succeeded)+' / '+n(api.failed):'Not recorded';return api?n(api.input)+(section==='Extraction'?' / '+n(api.output):''):'Not recorded';}
+ if(row==='Embedding estimate')return embedding?money(embedding.cost):'Not used';if(row==='Extraction estimate')return extraction?money(extraction.cost):'Not used';if(row==='AWS estimate')return d.aws==null?'Unavailable':money(d.aws);if(row==='Total known estimate')return money(cost+(d.aws||0));if(row==='Unknown-cost calls')return n(unknown);if(row==='AI cost per processed post')return d.processed?money(cost/d.processed):'Unavailable';if(!d.first||!d.last)return 'Not recorded';const seconds=Math.max(0,(Date.parse(d.last)-Date.parse(d.first))/1000);return Math.floor(seconds/3600)+'h '+Math.floor(seconds%3600/60)+'m';
+}
+function Column({selection,change,seed,onData,remove}:{selection:Selection;change:(s:Selection)=>void;seed:DashboardData|null;onData:(d:DashboardData)=>void;remove?:()=>void}){
+ const [snapshot,setSnapshot]=useState<DashboardData|null>(seed?.source===selection.source?seed:null),[busy,setBusy]=useState(false),[error,setError]=useState('');
+ const reportData=useEffectEvent(onData);
+ const key=selection.country==='hk'?new URLSearchParams({source:selection.source,job:selection.job,view:'comparison'}).toString():'';
+ useEffect(()=>{if(!key)return;let active=true;const c=new AbortController();const cached=memo.get(key);if(cached&&Date.now()-Date.parse(cached.refreshedAt)<(cached.cache?.ttlSeconds||60)*1000){queueMicrotask(()=>{if(active){setSnapshot(cached);setBusy(false);setError('');reportData(cached);}});return()=>{active=false;};}queueMicrotask(()=>{if(active){setBusy(true);setError('');}});fetch('/api/dashboard?'+key,{signal:c.signal,cache:'no-store'}).then(async r=>{if(!r.ok)throw Error('Unable to load comparison');return r.json() as Promise<DashboardData>;}).then(d=>{if(active){memo.set(key,d);setSnapshot(d);reportData(d);}}).catch(e=>{if(active)setError(e.message);}).finally(()=>{if(active)setBusy(false);});return()=>{active=false;c.abort();};},[key]); // Each selection owns its response.
+ const data=selection.country==='hk'&&snapshot?.source===selection.source?snapshot:null;
+ return <div className="compare-controls"><div className="compare-column-heading"><strong>Job {selection.id}</strong>{remove&&<Button size="icon-sm" variant="ghost" aria-label="Remove comparison" onClick={remove}><X size={14}/></Button>}</div><div className="compare-filter-grid"><label>Pipeline<DashboardSelect label={'Pipeline '+selection.id} value={selection.source} onChange={v=>change({...selection,source:v as PipelineSource,job:'',date:''})} options={[{value:'lambda',label:'Lambda'},{value:'fargate',label:'Fargate'},{value:'manual',label:'Manual'}]}/></label><label>Country<DashboardSelect label={'Country '+selection.id} value={selection.country} onChange={v=>change({...selection,country:v,job:'',date:''})} options={[{value:'',label:'Select country'},{value:'hk',label:'Hong Kong',icon:'/brand/hong-kong.svg'},{value:'my',label:'Malaysia (Soon)',disabled:true,icon:'/brand/malaysia.svg'},{value:'sg',label:'Singapore (Soon)',disabled:true,icon:'/brand/singapore.svg'}]}/></label><label>Job<DashboardSelect label={'Job '+selection.id} value={selection.job} onChange={v=>change({...selection,job:v,date:''})} options={[{value:'',label:'Select job'},...(data?.jobs||[]).map(j=>({value:j._id,label:shortDate(j.date_from)+(j.date_from===j.date_until?'':' - '+shortDate(j.date_until)),description:j.benchmark_id+' | '+j.date_from+' to '+j.date_until}))]}/></label><label>Activity date<DashboardSelect label={'Activity date '+selection.id} value={selection.date} onChange={v=>change({...selection,date:v})} options={[{value:'',label:'Select activity date'},...(data?.job?._id===selection.job?[...data.comparison].sort((a,b)=>a.date==='all'?-1:b.date==='all'?1:b.date.localeCompare(a.date)):[]).map(d=>({value:d.date,label:shortDate(d.date)}))]}/></label></div>{busy?<div className="compare-loading" role="status"><Loader2 size={13} className="animate-spin"/><span>Loading job snapshot</span><span className="compare-loading-track"/></div>:<small role={error?'alert':undefined}>{!selection.country?'Choose a country to load jobs':error||''}</small>}</div>;
 }
 
-export function JobComparison() {
-  const [tables, setTables] = useState([1, 2, 3]);
-  const nextId = useRef(4);
-  return <section aria-label="Comparison" className="space-y-4">
-    <div className="flex items-center justify-between"><h2 className="text-xl font-semibold">Comparison</h2>
-      <button type="button" disabled={tables.length >= 4} className="rounded-md border px-3 py-1 disabled:opacity-50" onClick={() => setTables([...tables,nextId.current++])}>Add comparison</button></div>
-    <details className="comparison-notes"><summary>How counts and costs are calculated</summary><p>Processed posts count distinct posts with an embedding outcome or publication on the selected day (UTC+08). Average AI cost divides known API estimates by processed posts.</p>
-    <p className="text-sm text-muted-foreground">AWS estimates use finished runs grouped by start date. The model assumes 1 GB x86 per Lambda invocation or one 2 vCPU, 4 GiB Fargate task per run. Other AWS services are excluded.</p></details>
-    <div className="comparison-grid">{tables.map((id,i) => <ComparisonTable key={id} index={i+1} remove={tables.length > 2 ? () => setTables(tables.filter(t => t !== id)) : undefined}/>)}</div>
-  </section>;
+const explanation='Post counts are events except unique processed posts. API calls include retries. AI estimates exclude unknown charges. Total costs are partial; AWS uses assumptions. Observed span includes idle gaps.';
+export function JobComparison({initialData,initialSource}:{initialData:DashboardData|null;initialSource:PipelineSource}){
+ const [columns,setColumns]=useState<Selection[]>([{id:1,country:'',source:initialSource,job:'',date:''},{id:2,country:'',source:initialSource==='fargate'?'lambda':'fargate',job:'',date:''}]);
+ const [data,setData]=useState<Record<number,DashboardData>>({}),[expanded,setExpanded]=useState(false);
+ const ready=(c:Selection)=>c.country==='hk'&&!!c.date&&data[c.id]?.job?._id===c.job&&data[c.id]?.source===c.source;
+ const value=(c:Selection,section:string,row:string)=>ready(c)?metric(data[c.id],c.date,section,row):'Not available';
+ const download=()=>{
+  const rows:string[][]=[['Comparison snapshot',...columns.map(c=>'Job '+c.id)],['Country',...columns.map(c=>c.country==='hk'?'Hong Kong':'Not selected')],['Pipeline',...columns.map(c=>c.source)],['Source job ID',...columns.map(c=>c.job||'Not selected')],['Activity date',...columns.map(c=>c.date==='all'?'All activity dates':c.date||'Not selected')],['Snapshot time (ISO)',...columns.map(c=>ready(c)?data[c.id].refreshedAt:'Not available')],['Currency',...columns.map(()=>'USD')],[],['Section','Metric',...columns.map(c=>'Job '+c.id)]];
+  for(const group of groups)for(const row of group.rows)rows.push([group.name,row,...columns.map(c=>value(c,group.name,row))]);
+  rows.push([],['Notes',explanation]);
+  const escape=(s:string)=>'"'+(/^[=+@\-\t\r]/.test(s)?"'"+s:s).replaceAll('"','""')+'"';
+  const url=URL.createObjectURL(new Blob(['\uFEFF'+rows.map(r=>r.map(escape).join(',')).join('\r\n')],{type:'text/csv;charset=utf-8;'}));
+  const a=document.createElement('a');a.href=url;a.download='job-comparison-'+new Date().toISOString().slice(0,10)+'.csv';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+ };
+ const controls=(c:Selection)=><Column key={c.id} selection={c} seed={initialData} change={next=>{setColumns(columns.map(x=>x.id===c.id?next:x));if(next.job!==c.job||next.source!==c.source||next.country!==c.country)setData(d=>{const copy={...d};delete copy[c.id];return copy;});}} onData={d=>setData(old=>({...old,[c.id]:d}))} remove={columns.length>2?()=>setColumns(columns.filter(x=>x.id!==c.id)):undefined}/>;
+ const table=(withControls:boolean)=><table className="comparison-v2-table" style={{minWidth:180+columns.length*270}}><colgroup><col className="comparison-metric-col"/>{columns.map(c=><col key={c.id}/>)}</colgroup><thead>{withControls&&<tr className="comparison-setup-row"><th scope="col"><strong>Metric</strong></th>{columns.map(c=><th key={c.id}>{controls(c)}</th>)}</tr>}{!withControls&&<tr className="comparison-label-row"><th scope="col">Metric</th>{columns.map(c=><th scope="col" key={c.id}><strong>Job {c.id}</strong><small>{c.source.charAt(0).toUpperCase()+c.source.slice(1)}{c.date?' | '+shortDate(c.date):' | Select report'}</small></th>)}</tr>}</thead><tbody>{groups.map(group=><Fragment key={group.name}><tr className="comparison-section-row"><th colSpan={columns.length+1} scope="colgroup">{group.name}</th></tr>{group.rows.map(row=><tr key={row}><th scope="row">{row}</th>{columns.map(c=><td key={c.id}>{value(c,group.name,row)}</td>)}</tr>)}</Fragment>)}</tbody></table>;
+ return <section className="comparison-v2"><div className="comparison-heading"><div><h2>Compare jobs</h2><p>One set of metrics. Side-by-side results by activity date.</p></div><div><TooltipProvider><Tooltip><TooltipTrigger render={<span tabIndex={0} className="save-soon-trigger"/>}><Button variant="outline" disabled><Bookmark size={14}/>Save</Button></TooltipTrigger><TooltipContent>Coming soon</TooltipContent></Tooltip></TooltipProvider><Button variant="outline" disabled={columns.length>=4} onClick={()=>setColumns([...columns,{id:Math.max(...columns.map(c=>c.id))+1,country:'',source:initialSource,job:'',date:''}])}><Plus size={14}/>Add job</Button><Button variant="outline" onClick={download} disabled={!columns.some(ready)} title="Download displayed metrics and snapshot details as CSV"><Download size={14}/>CSV</Button><Button variant="outline" size="icon-sm" aria-label="Expand comparison table" onClick={()=>setExpanded(true)}><Maximize2 size={16}/></Button></div></div><div className="comparison-table-wrap">{table(true)}</div><p className="comparison-footnote">{explanation}</p><Dialog open={expanded} onOpenChange={setExpanded}><DialogContent className="comparison-expanded"><div className="comparison-expanded-heading"><div><DialogTitle>Job comparison</DialogTitle><DialogDescription>All comparison metrics | USD estimates</DialogDescription></div><Button variant="outline" disabled={!columns.some(ready)} onClick={download}><Download size={14}/>Download CSV</Button></div><div className="comparison-table-wrap">{table(false)}</div><p className="comparison-footnote">{explanation}</p></DialogContent></Dialog></section>;
 }

@@ -1,8 +1,8 @@
-export type PipelineSource = "lambda" | "fargate";
+export type PipelineSource = "lambda" | "fargate" | "manual";
 
 export function pipelineSource(value: string | null): PipelineSource | null {
   if (value === null || value === "lambda") return "lambda";
-  return value === "fargate" ? value : null;
+  return (value === "fargate" || value === "manual") ? value : null;
 }
 
 export function jobStatus(state: string) {
@@ -18,7 +18,7 @@ export function jobStatus(state: string) {
 }
 
 export function sourceLabel(source: PipelineSource) {
-  return source === "lambda" ? "Lambda" : "Fargate";
+  return source === "manual" ? "Manual" : source === "lambda" ? "Lambda" : "Fargate";
 }
 
 const stageNames: Record<string,string> = {ingest:"Post ingestion", "lambda-fetch":"Fetch posts", "lambda-embed":"Generate embeddings"};

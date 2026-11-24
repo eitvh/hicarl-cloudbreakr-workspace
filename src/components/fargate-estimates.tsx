@@ -58,7 +58,7 @@ export function FargateEstimates() {
   const money = (value:number) => "$"+value.toFixed(6);
   return <Card className="dash-panel aws-snapshot">
     <div className="panel-heading"><h2>AWS usage estimate</h2><span className="snapshot-label">{custom ? "Local import" : "Saved job snapshot"} | Partial coverage</span></div>
-    <p>{custom ? files.join(" | ") : snapshot ? snapshot.label+" | "+snapshot.files.length+" original CloudWatch exports" : "Loading saved log snapshot..."}</p>
+    <div className="report-subtitle"><strong>{custom?"Imported logs":snapshot?.label||"Loading snapshot"}</strong><span>{files.length} log files</span><span>CloudWatch evidence</span></div>
     {(loading||snapshotLoading)&&<p role="status">Loading log files...</p>}
     {error&&<p role="alert">{error} {files.length>0&&"Previous calculation remains visible."}</p>}
     <div className="inspector-tabs">
