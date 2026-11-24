@@ -16,8 +16,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Lambda Automation Monitoring",
-  description: "Instagram post automation monitoring for AWS Lambda.",
+  title: "IG Post Automation Monitoring",
+  description: "Instagram post automation monitoring for AWS Lambda and Fargate.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

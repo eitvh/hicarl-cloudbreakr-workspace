@@ -1,0 +1,15 @@
+{
+  "source": "User-provided ECS task JSON, 24 November 2026",
+  "taskId": "d938020d1f3c4d7983d8c285d2e6a84d",
+  "cpu": 2,
+  "memory": 4,
+  "storage": 20,
+  "architecture": "x86_64",
+  "platform": "Linux",
+  "capacityProvider": "FARGATE",
+  "pullStartedAt": "2026-11-24T07:01:21.723Z",
+  "startedAt": "2026-11-24T07:01:23.963Z",
+  "executionStoppedAt": "2026-11-24T08:03:23.630Z",
+  "stoppedAt": "2026-11-24T08:03:46.720Z",
+  "exitCode": 0
+}

@@ -1,1 +1,1 @@
-export default function Loading() { return <main className="monitor"><p>Reading pipeline activity…</p></main>; }
+﻿export { DashboardLoading as default } from "@/components/dashboard-loading";

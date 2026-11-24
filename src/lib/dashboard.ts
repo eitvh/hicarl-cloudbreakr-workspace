@@ -1,25 +1,95 @@
+import { lambdaEstimate } from "@/lib/aws-cost";
+import type { PipelineSource } from "@/lib/pipeline-source";
 ﻿import "server-only";
 import { assertMongoConfiguration } from "@/lib/mongo-diagnostics";
 import { MongoClient, type Document } from "mongodb";
 
 const globalMongo = globalThis as typeof globalThis & { mongoRead?: Promise<MongoClient> };
 const options = { maxTimeMS: 15000 };
-export async function dashboard(params: URLSearchParams) {
+async function collections(source: PipelineSource) {
   const env = process.env;
-  assertMongoConfiguration(env);
-  globalMongo.mongoRead ??= new MongoClient(env.AUTOMATION_IG_MONGO_URI, {
+  const isFargate = source === "fargate";
+  const database = isFargate ? "ai-vector-search-benchmark-fargate" : env.AUTOMATION_IG_MONGO_DATABASE;
+  const config = { AUTOMATION_IG_MONGO_DATABASE: database, AUTOMATION_IG_MONGO_URI: env.AUTOMATION_IG_MONGO_URI };
+  assertMongoConfiguration(config);
+  globalMongo.mongoRead ??= new MongoClient(config.AUTOMATION_IG_MONGO_URI, {
     serverSelectionTimeoutMS: 8000, maxPoolSize: 5,
   }).connect().catch(error => { globalMongo.mongoRead = undefined; throw error; });
   const client = await globalMongo.mongoRead;
-  const db = client.db(env.AUTOMATION_IG_STAGING_DATABASE || env.AUTOMATION_IG_MONGO_DATABASE);
-  const state = db.collection(env.AUTOMATION_IG_STATE_COLLECTION || "ig-post-lambda-state");
-  const staging = db.collection(env.AUTOMATION_IG_STAGING_COLLECTION || "ig-post-lambda-staging");
-  const usage = db.collection(env.AUTOMATION_IG_USAGE_COLLECTION || "ig-post-lambda-usage");
+  const db = client.db(isFargate ? database : env.AUTOMATION_IG_STAGING_DATABASE || database);
+  return {
+    state: db.collection<Document & {_id:string}>(isFargate ? "ig-post-fargate-state" : env.AUTOMATION_IG_STATE_COLLECTION || "ig-post-lambda-state"),
+    staging: db.collection(isFargate ? "ig-post-fargate-staging" : env.AUTOMATION_IG_STAGING_COLLECTION || "ig-post-lambda-staging"),
+    usage: db.collection<Document & {_id:string}>(isFargate ? "ig-post-fargate-usage" : env.AUTOMATION_IG_USAGE_COLLECTION || "ig-post-lambda-usage"),
+    output: client.db(database).collection(isFargate ? "ig-post-fargate-output" : env.AUTOMATION_IG_MONGO_COLLECTION || "ig-post-lambda-output"),
+  };
+}
+
+// Fargate resumes a checkpoint for each location and date range across ingest runs.
+async function fargateJobs({ state, usage }: Pick<Awaited<ReturnType<typeof collections>>, "state" | "usage">) {
+  const windows = await usage.aggregate([
+    { $match: { record_type: "run", locationId: { $exists: true }, date_from: { $type: "string" }, date_until: { $type: "string" } } },
+    { $group: { _id: { location: "$locationId", from: "$date_from", until: "$date_until" }, started: { $min: "$started_at" }, finished: { $max: "$finished_at" } } },
+    { $sort: { started: -1 } }, { $limit: 100 },
+  ], options).toArray();
+  const jobs = windows.map(({ _id, started, finished }) => {
+    const window = [_id.location, _id.from, _id.until].join("|");
+    return { _id: "sync-v2:ig-post-fargate-staging:ig-post-fargate-output:" + window,
+      benchmark_id: "Fargate ingest", location_id: _id.location, date_from: _id.from,
+      date_until: _id.until, created_at: started, updated_at: finished, source_done: false };
+  });
+  const checkpoints = await state.find({ _id: { $in: jobs.map(job => job._id) } },
+    { ...options, projection: { done: 1, updated_at: 1 } }).toArray();
+  const byId = new Map(checkpoints.map(row => [row._id, row]));
+  return jobs.map(job => {
+    const checkpoint = byId.get(job._id);
+    return { ...job, source_done: checkpoint?.done === true, updated_at: checkpoint?.updated_at ?? job.updated_at,
+      source_finished_at: checkpoint?.done ? checkpoint.updated_at : null };
+  });
+}
+
+const terminalMetrics = ["embedding_completed", "embedding_failed", "embedding_skipped", "published"];
+export interface ComparisonDay {
+  date: string; posts: Record<string,number>; processed: number; aws: number | null;
+}
+async function comparisonDays(usage: Awaited<ReturnType<typeof collections>>["usage"], ids: string[], runs: Document[], source: PipelineSource) {
+  const counts = await usage.aggregate([
+    {$match:{record_type:"post_count",run_id:{$in:ids},reporting_date_my:{$type:"string"},post_id:{$type:"string"},metric:{$type:"string"}}},
+    {$group:{_id:{date:"$reporting_date_my",post:"$post_id"},metrics:{$addToSet:"$metric"}}},
+    {$project:{keys:{$concatArrays:["$metrics",{$cond:[{$gt:[{$size:{$setIntersection:["$metrics",terminalMetrics]}},0]},["__processed"],[]]}]}}},
+    {$unwind:"$keys"},{$group:{_id:{date:"$_id.date",metric:"$keys"},count:{$sum:1}}}
+  ], options).toArray();
+  const days = new Map<string, ComparisonDay>();
+  function day(date:string) {
+    const row = days.get(date) ?? {date,posts:{},processed:0,aws:null};
+    days.set(date,row);
+    return row;
+  }
+  for (const entry of counts) {
+    const row = day(entry._id.date);
+    if (entry._id.metric === "__processed") row.processed = entry.count;
+    else row.posts[entry._id.metric] = entry.count;
+  }
+  for (const run of runs) {
+    const start = new Date(run.started_at).getTime();
+    if (!run.started_at || !Number.isFinite(start)) continue;
+    const row = day(new Date(start + 8*3600000).toISOString().slice(0,10));
+    const seconds = (new Date(run.finished_at).getTime()-start)/1000;
+    if (!run.finished_at || !Number.isFinite(seconds) || seconds < 0) continue;
+    const cost = source === "lambda" ? lambdaEstimate(seconds,1,"x86").total
+      : Math.max(60,Math.ceil(seconds))/3600 * (2*0.05056 + 4*0.00553);
+    row.aws = (row.aws ?? 0) + cost;
+  }
+  return [...days.values()];
+}
+
+export async function dashboard(params: URLSearchParams, source: PipelineSource = "lambda") {
+  const { state, staging, usage, output } = await collections(source);
   const [jobs, dates, finishedDates, outputCount, stagingCount] = await Promise.all([
-    state.find({ record_type: "source_job" }, { ...options, projection: { benchmark_id:1, location_id:1, date_from:1, date_until:1, rows_scanned:1, source_done:1, created_at:1, updated_at:1, source_finished_at:1, "cursor.user_done":1 } }).sort({ created_at:-1 }).limit(100).toArray(),
+    source === "fargate" ? fargateJobs({state, usage}) : state.find({ record_type: "source_job" }, { ...options, projection: { benchmark_id:1, location_id:1, date_from:1, date_until:1, rows_scanned:1, source_done:1, created_at:1, updated_at:1, source_finished_at:1, "cursor.user_done":1 } }).sort({ created_at:-1 }).limit(100).toArray(),
     usage.aggregate([{$match:{record_type:{$in:["run","post_count","api_usage"]},reporting_date_my:{$type:"string"}}},{$group:{_id:"$reporting_date_my"}},{$sort:{_id:-1}}],options).toArray(),
     usage.aggregate([{$match:{record_type:"api_usage",operation:"embedding",finished_at:{$type:"date"}}},{$group:{_id:{$dateToString:{date:"$finished_at",format:"%Y-%m-%d",timezone:"Asia/Kuala_Lumpur"}}}},{$sort:{_id:-1}}],options).toArray(),
-    client.db(env.AUTOMATION_IG_MONGO_DATABASE).collection(env.AUTOMATION_IG_MONGO_COLLECTION || "ig-post-lambda-output").countDocuments({},options),
+    output.countDocuments({},options),
     staging.countDocuments({},options),
   ]);
   const dateValues = dates.map(d=>String(d._id));
@@ -27,12 +97,22 @@ export async function dashboard(params: URLSearchParams) {
   const requestedDate = params.get("date") || "";
   const date = dateValues.includes(requestedDate) ? requestedDate : dateValues[0] || "";
   const finished = finishedValues.includes(params.get("finished") || "") ? params.get("finished")! : "";
-  const retainedByJob=await staging.aggregate([{$match:{workflow_ids:{$in:jobs.map(j=>String(j._id))}}},{$unwind:"$workflow_ids"},{$group:{_id:"$workflow_ids",retained:{$sum:1},outstanding:{$sum:{$cond:[{$or:[{$eq:["$jobs.embed.status","skipped"]},{$and:[{$eq:["$jobs.embed.status","completed"]},{$eq:["$publish_status","published"]}]}]},0,1]}}}}],options).toArray();
-  const completedJobs=jobs.filter(j=>j.source_done&&retainedByJob.some(g=>g._id===String(j._id)&&g.retained>0&&g.outstanding===0));
-  const job=params.get("view")==="live"?jobs[0]:completedJobs.find(j=>String(j._id)===params.get("job"))||completedJobs[0];
+  const retainedByJob=source === "fargate" ? [] : await staging.aggregate([{$match:{workflow_ids:{$in:jobs.map(j=>String(j._id))}}},{$unwind:"$workflow_ids"},{$group:{_id:"$workflow_ids",retained:{$sum:1},outstanding:{$sum:{$cond:[{$or:[{$eq:["$jobs.embed.status","skipped"]},{$and:[{$eq:["$jobs.embed.status","completed"]},{$eq:["$publish_status","published"]}]}]},0,1]}}}}],options).toArray();
+  const selectableJobs=source === "fargate" ? jobs : jobs.filter(j=>j.source_done&&retainedByJob.some(g=>g._id===String(j._id)&&g.retained>0&&g.outstanding===0));
+  const job=params.get("view")==="live"?jobs[0]:selectableJobs.find(j=>String(j._id)===params.get("job"))||selectableJobs[0];
   const status = ["pending","processing","completed","failed","skipped"].includes(params.get("status") || "") ? params.get("status")! : "";
-  const page = Math.max(1,Math.min(10000,parseInt(params.get("page") || "1") || 1));
-  const filter = {workflow_ids:job?String(job._id):"__no_selected_job__"};
+  const runMatch = source === "fargate"
+    ? { locationId: job?.location_id, date_from: job?.date_from, date_until: job?.date_until }
+    : { job_id: job ? String(job._id) : "__none__" };
+  const jobRuns = job ? await usage.find({record_type:"run", ...runMatch}, {
+    ...options, projection:{_id:1,stage:1,started_at:1,finished_at:1,status:1}
+  }).toArray() : [];
+  const jobRunIds = jobRuns.map(run=>run._id);
+  const comparison = params.get("view") === "comparison" && job && params.get("job") === String(job._id)
+    ? await comparisonDays(usage, jobRunIds, jobRuns, source) : [];
+  const filter = source === "fargate"
+    ? { post_id: { $in: await usage.distinct("post_id", { run_id: { $in: jobRunIds }, post_id: { $type: "string" } }, options) } }
+    : {workflow_ids:job?String(job._id):"__no_selected_job__"};
   const postId=(params.get("postId")||"").trim(),userId=(params.get("userId")||"").trim(),publication=(params.get("publication")||"").trim();
   if((postId&&!/^\d{1,30}$/.test(postId))||(userId&&!/^\d{1,30}$/.test(userId)))throw Error("Invalid identifier");
   const postFilter = {...filter,...(status ? {"jobs.embed.status":status} : {}),...(postId?{post_id:postId}:{}),...(userId?{user_id:userId}:{}),...(publication?{publish_status:publication}: {})};
@@ -46,15 +126,26 @@ export async function dashboard(params: URLSearchParams) {
     estimated_usd:{$sum:"$estimated_cost_usd"},
     unknown_cost_calls:{$sum:{$cond:[{$eq:[{$ifNull:["$estimated_cost_usd",null]},null]},1,0]}},
   };
-  const [groups,posts,postCount,events,costs] = await Promise.all([
+  const stagingPage = staging.countDocuments(postFilter,options).then(async postCount => {
+    const requested = Number(params.get("page"));
+    const last = Math.max(1,Math.ceil(postCount/5));
+    const page = Number.isSafeInteger(requested) ? Math.max(1,Math.min(requested,last)) : 1;
+    const posts = await staging.find(postFilter,{...options,projection:{post_id:1,user_id:1,caption:1,created_at:1,synced_at:1,published_at:1,embedding_model:1,"jobs.embed.status":1,"jobs.embed.attempts":1,"jobs.embed.error_type":1,"jobs.embed.reason":1,publish_status:1}}).sort({_id:1}).skip((page-1)*5).limit(5).toArray();
+    return {page,posts,postCount};
+  });
+  const [{page,posts,postCount},groups,events,costs,syncedPosts] = await Promise.all([
+    stagingPage,
     staging.aggregate([{$match:filter},{$group:{_id:{embed:"$jobs.embed.status",publish:"$publish_status"},count:{$sum:1}}}],options).toArray(),
-    staging.find(postFilter,{...options,projection:{post_id:1,user_id:1,caption:1,created_at:1,synced_at:1,published_at:1,embedding_model:1,"jobs.embed.status":1,"jobs.embed.attempts":1,"jobs.embed.error_type":1,"jobs.embed.reason":1,publish_status:1}}).sort({_id:1}).skip((page-1)*5).limit(5).toArray(),
-    staging.countDocuments(postFilter,options),
     usage.aggregate([{$match:{reporting_date_my:date,record_type:{$in:["post_count","api_usage"]}}},{$group:{_id:{run_id:"$run_id",type:"$record_type",metric:"$metric",operation:"$operation",outcome:"$outcome"},...groupFields}}],options).toArray(),
     usage.aggregate([{$match:costMatch},{$group:{_id:{outcome:"$outcome",pricing:"$pricing.version",source:"$usage_source"},...groupFields}}],options).toArray(),
+    source === "fargate" ? usage.aggregate<{count:number}>([
+      {$match:{record_type:"post_count", metric:"synced", run_id:{$in:jobRunIds}, post_id:{$type:"string"}}},
+      {$group:{_id:"$post_id"}},
+      {$count:"count"},
+    ], options).toArray() : [],
   ]);
   const eventRunIds=[...new Set(events.map(e=>e._id.run_id).filter((id):id is string=>typeof id==="string"))];
-  const runDocs=await db.collection<Document & {_id:string}>(usage.collectionName).find({record_type:"run",$or:[{reporting_date_my:date},{_id:{$in:eventRunIds}}]},{...options,projection:{stage:1,status:1,locationId:1,started_at:1,finished_at:1}}).toArray();
+  const runDocs=await usage.find({record_type:"run",$or:[{reporting_date_my:date},{_id:{$in:eventRunIds}}]},{...options,projection:{stage:1,status:1,locationId:1,started_at:1,finished_at:1}}).toArray();
   const totals = {counts:{} as Record<string,number>,estimated_usd:0,unknown_cost_calls:0,input_tokens:0,output_tokens:0};
   const runs = runDocs.map(run=>({
     run_id:String(run._id),stage:run.stage,status:run.status,locationId:run.locationId,
@@ -81,10 +172,6 @@ export async function dashboard(params: URLSearchParams) {
     }
   }
   const report = {reporting_date_my:date,run_count:runs.length,totals,runs};
-  const jobRuns = job ? await usage.find({record_type:"run",job_id:String(job._id)},{
-    ...options,projection:{_id:1,stage:1,started_at:1,finished_at:1,status:1}
-  }).toArray() : [];
-  const jobRunIds = jobRuns.map(r=>r._id);
   const lastFinished = jobRuns.map(r=>r.finished_at).filter(Boolean).sort((a,b)=>new Date(b).getTime()-new Date(a).getTime())[0] || null;
   const extractionMatch = {record_type:"api_usage",operation:"extraction",run_id:{$in:jobRunIds}};
   const [extraction, apiDetails, overallCosts, timeline, stageBreakdown, jobCosts] = await Promise.all([
@@ -96,7 +183,7 @@ export async function dashboard(params: URLSearchParams) {
     }}],options).toArray(),
     usage.aggregate([{$match:{record_type:"api_usage",operation:{$in:["embedding","extraction"]}}},{$group:{_id:"$operation",...groupFields}}],options).toArray(),
     usage.aggregate([{$match:{record_type:"api_usage",run_id:{$in:jobRunIds},recorded_at:{$type:"date"}}},{$group:{_id:{$dateToString:{date:"$recorded_at",format:"%Y-%m-%dT%H:%M:00",timezone:"Asia/Kuala_Lumpur"}},calls:{$sum:1},tokens:{$sum:"$input_tokens"},cost:{$sum:"$estimated_cost_usd"},failed:{$sum:{$cond:[{$eq:["$outcome","api_failed"]},1,0]}}}},{$sort:{_id:1}}],options).toArray(),
-    usage.aggregate([{$match:{record_type:"run",job_id:job ? String(job._id) : "__none__"}},{$group:{_id:{stage:"$stage",status:"$status"},count:{$sum:1}}}],options).toArray(),
+    usage.aggregate([{$match:{record_type:"run",_id:{$in:jobRunIds}}},{$group:{_id:{stage:"$stage",status:"$status"},count:{$sum:1}}}],options).toArray(),
     usage.aggregate([{$match:{record_type:"api_usage",run_id:{$in:jobRunIds}}},{$group:{_id:"$operation",...groupFields}}],options).toArray()
   ]);
   const embedRuns=jobRuns.filter(r=>r.stage==="lambda-embed");
@@ -121,19 +208,24 @@ export async function dashboard(params: URLSearchParams) {
     lastFinished,runCount:jobRuns.length,unfinishedRuns:jobRuns.filter(r=>!r.finished_at).length
   };
 
-  const lastActivity = [job?.updated_at,job?.source_finished_at,lastFinished,...jobRuns.map(r=>r.started_at)].filter(Boolean).sort((a,b)=>new Date(b).getTime()-new Date(a).getTime())[0] || null;
+  const latestEvent = jobRunIds.length ? await usage.findOne(
+    {run_id: {$in: jobRunIds}, recorded_at: {$type:"date"}},
+    {...options, sort:{recorded_at:-1}, projection:{recorded_at:1}}
+  ) : null;
+  const lastActivity = [latestEvent?.recorded_at,job?.updated_at,job?.source_finished_at,lastFinished,...jobRuns.map(r=>r.started_at)].filter(Boolean).sort((a,b)=>new Date(b).getTime()-new Date(a).getTime())[0] || null;
   const outstanding = groups.filter(g=>!(g._id.embed==="completed"&&g._id.publish==="published")&&g._id.embed!=="skipped").reduce((n,g)=>n+g.count,0);
   const recent = lastActivity && Date.now()-new Date(lastActivity).getTime()<5*60*1000;
   const failures = groups.filter(g=>g._id.embed==="failed").reduce((n,g)=>n+g.count,0);
   const activity = {
-    state:!job?"idle":job.source_done&&outstanding===0?"completed":!recent?"stale":failures?"attention":!job.source_done?"fetching":"embedding",
+    state:!job?"idle":job.source_done&&outstanding===0&&groups.length>0&&timing.unfinishedRuns===0?"completed":!recent?"stale":failures?"attention":!job.source_done?"fetching":"embedding",
     lastActivity, outstanding, failures,
     processing:groups.filter(g=>g._id.embed==="processing").reduce((n,g)=>n+g.count,0),
     pending:groups.filter(g=>g._id.embed==="pending").reduce((n,g)=>n+g.count,0)
   };
   // Plain DTOs only: no vectors, connection metadata, raw errors, or worker tokens.
   return JSON.parse(JSON.stringify({
-    jobs:params.get("view")==="live"?jobs:completedJobs,job:job || null,lastJob:jobs[0] || null,dates:dateValues,finishedDates:finishedValues,
+    comparison, syncedPostCount:syncedPosts[0]?.count ?? 0,
+    source,jobs:params.get("view")==="live"?jobs:selectableJobs,job:job || null,lastJob:jobs[0] || null,dates:dateValues,finishedDates:finishedValues,
     date,finished,status,page,outputCount,stagingCount,groups,posts,postCount,costs,report,extraction,timing,jobCosts,overallCosts,timeline,stageBreakdown,activity,apiDetails:apiDetails[0] || {},
     refreshedAt:new Date().toISOString(),
   })) as DashboardData;
@@ -143,6 +235,9 @@ export interface ApiTotals {count:number;input_tokens:number;output_tokens:numbe
 export interface Run {run_id:string;stage:string;status:string;locationId:number|null;counts:Record<string,number>;api:Record<string,Record<string,ApiTotals>>}
 export interface ApiDetail { _id:string;post_id:string;run_id:string;model?:string;recorded_at:string;finished_at?:string;input_tokens?:number;output_tokens?:number;estimated_cost_usd?:number|null;error_type?:string;usage_source?:string;currentPost?:{publish_status?:string;jobs?:{embed?:{status?:string;attempts?:number}}};laterAttempt?:{recorded_at:string;outcome:string;run_id:string;error_type?:string}|null }
 export interface DashboardData {
+ comparison:ComparisonDay[];
+ syncedPostCount: number;
+ source: PipelineSource;
  jobCosts:({ _id:string } & ApiTotals)[];
  overallCosts:({ _id:string } & ApiTotals)[];
  timeline:{_id:string;calls:number;tokens:number;cost:number;failed:number}[];
@@ -160,14 +255,9 @@ export interface DashboardData {
  report:{reporting_date_my:string;run_count:number;totals:{counts:Record<string,number>;estimated_usd:number;unknown_cost_calls:number;input_tokens:number;output_tokens:number};runs:Run[]};
 }
 
-export async function inspectRun(id: string, page = 1) {
+export async function inspectRun(id: string, page = 1, source: PipelineSource = "lambda") {
   if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) return null;
-  const env=process.env;
-  if (!env.AUTOMATION_IG_MONGO_URI) throw new Error("configuration");
-  globalMongo.mongoRead ??= new MongoClient(env.AUTOMATION_IG_MONGO_URI,{serverSelectionTimeoutMS:8000,maxPoolSize:5}).connect().catch(e=>{globalMongo.mongoRead=undefined;throw e;});
-  const client=await globalMongo.mongoRead;
-  const db=client.db(env.AUTOMATION_IG_STAGING_DATABASE||env.AUTOMATION_IG_MONGO_DATABASE);
-  const usage=db.collection<Document & {_id:string}>(env.AUTOMATION_IG_USAGE_COLLECTION||"ig-post-lambda-usage");
+  const { usage, staging } = await collections(source);
   // UUIDs are stored as strings in the Python usage collection.
   const run=await usage.findOne({record_type:"run",_id:id},{...options,projection:{stage:1,status:1,started_at:1,finished_at:1,job_id:1,aws_request_id:1,benchmark_id:1,locationId:1,date_from:1,date_until:1}});
   if(!run)return null;
@@ -176,7 +266,7 @@ export async function inspectRun(id: string, page = 1) {
     usage.aggregate([{$match:{run_id:id,record_type:"api_usage"}},{$group:{_id:{operation:"$operation",outcome:"$outcome",model:"$model",error:"$error_type"},calls:{$sum:1},input:{$sum:"$input_tokens"},output:{$sum:"$output_tokens"},cost:{$sum:"$estimated_cost_usd"},unknown:{$sum:{$cond:[{$eq:[{$ifNull:["$estimated_cost_usd",null]},null]},1,0]}}}}],options).toArray(),
     usage.aggregate([{$match:{run_id:id,record_type:{$in:["api_usage","post_count"]},post_id:{$type:"string"}}},{$group:{_id:"$post_id",metrics:{$addToSet:"$metric"},outcomes:{$addToSet:"$outcome"}}},{$sort:{_id:1}},{$facet:{
       total:[{$count:"count"}],
-      posts:[{$skip:(page-1)*3},{$limit:3},{$lookup:{from:env.AUTOMATION_IG_STAGING_COLLECTION||"ig-post-lambda-staging",localField:"_id",foreignField:"post_id",pipeline:[{$project:{_id:0,caption:1,publish_status:1,"jobs.embed.status":1,"jobs.embed.error_type":1}}],as:"current"}},{$project:{post_id:"$_id",_id:0,metrics:1,outcomes:1,current:{$arrayElemAt:["$current",0]}}}]
+      posts:[{$skip:(page-1)*3},{$limit:3},{$lookup:{from:staging.collectionName,localField:"_id",foreignField:"post_id",pipeline:[{$project:{_id:0,caption:1,publish_status:1,"jobs.embed.status":1,"jobs.embed.error_type":1}}],as:"current"}},{$project:{post_id:"$_id",_id:0,metrics:1,outcomes:1,current:{$arrayElemAt:["$current",0]}}}]
     }}],options).toArray()
   ]);
   return JSON.parse(JSON.stringify({run,counts,api,posts:linked[0]?.posts||[],total:linked[0]?.total[0]?.count||0,page})) as RunInspection;
@@ -190,16 +280,11 @@ export interface RunInspection {
 }
 
 // Bounded, exact-ID investigation. Never creates indexes or modifies records.
-export async function findRuns(kind:string, query:string) {
- const env=process.env;
- if(!env.AUTOMATION_IG_MONGO_URI)throw Error("configuration");
- globalMongo.mongoRead ??= new MongoClient(env.AUTOMATION_IG_MONGO_URI,{serverSelectionTimeoutMS:8000,maxPoolSize:5}).connect().catch(e=>{globalMongo.mongoRead=undefined;throw e;});
- const client=await globalMongo.mongoRead;
- const db=client.db(env.AUTOMATION_IG_STAGING_DATABASE||env.AUTOMATION_IG_MONGO_DATABASE);
- const usage=db.collection<Document & {_id:string}>(env.AUTOMATION_IG_USAGE_COLLECTION||"ig-post-lambda-usage");
+export async function findRuns(kind:string, query:string, source: PipelineSource = "lambda") {
+  const { usage, staging } = await collections(source);
  let postIds=[query];let limited=false;
  if(kind==="user"){
-  const posts=await db.collection(env.AUTOMATION_IG_STAGING_COLLECTION||"ig-post-lambda-staging").find({user_id:query},{...options,projection:{post_id:1}}).sort({post_id:1}).limit(101).toArray();
+  const posts=await staging.find({user_id:query},{...options,projection:{post_id:1}}).sort({post_id:1}).limit(101).toArray();
   limited=posts.length>100;postIds=posts.slice(0,100).map(p=>String(p.post_id));
  }
  const links=await usage.aggregate([{$match:{post_id:{$in:postIds},record_type:{$in:["post_count","api_usage"]}}},{$group:{_id:"$run_id"}},{$sort:{_id:1}},{$limit:101}],options).toArray();
