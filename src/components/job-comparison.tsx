@@ -10,6 +10,14 @@ import {Dialog,DialogContent,DialogTitle,DialogDescription} from '@/components/u
 
 type Selection={country:string;id:number;source:PipelineSource;job:string;date:string};
 const memo=new Map<string,DashboardData>();
+const pending=new Map<string,Promise<DashboardData>>();
+function loadComparison(key:string){
+ const cached=memo.get(key);
+ if(cached&&Date.now()-Date.parse(cached.cache?.savedAt||cached.refreshedAt)<(cached.cache?.ttlSeconds||60)*1000)return Promise.resolve(cached);
+ const existing=pending.get(key);if(existing)return existing;
+ const request=fetch('/api/dashboard?'+key,{cache:'no-store'}).then(async r=>{if(!r.ok)throw Error('Unable to load comparison');return r.json() as Promise<DashboardData>;}).then(data=>{memo.set(key,data);if(memo.size>16)memo.delete(memo.keys().next().value!);return data;}).finally(()=>pending.delete(key));
+ pending.set(key,request);return request;
+}
 const shortDate=(value:string)=>value==='all'?'All activity dates':new Date(value+'T00:00:00Z').toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric',timeZone:'UTC'});
 const groups=[{name:'Posts',rows:['Fetched events','Published events','Unique processed']},{name:'Embedding',rows:['Completed / skipped / failed','API succeeded / failed','Input tokens']},{name:'Extraction',rows:['Completed / skipped / failed','API succeeded / failed','Input / output tokens']},{name:'Costs',rows:['Embedding estimate','Extraction estimate','AWS estimate','Total known estimate','Unknown-cost calls']},{name:'Efficiency',rows:['AI cost per processed post','Observed activity span']}];
 function metric(data:DashboardData|undefined,date:string,section:string,row:string){const d=data?.comparison.find(d=>d.date===date);if(!d)return 'Not available';const n=(v:number)=>v.toLocaleString(),money=(v:number)=>'$'+v.toFixed(6),ops=d.operations||{},embedding=ops.embedding,extraction=ops.extraction;const cost=Object.values(ops).reduce((v,o)=>v+o.cost,0),unknown=Object.values(ops).reduce((v,o)=>v+o.unknown,0);
@@ -21,7 +29,15 @@ function Column({selection,change,seed,onData,remove}:{selection:Selection;chang
  const [snapshot,setSnapshot]=useState<DashboardData|null>(seed?.source===selection.source?seed:null),[busy,setBusy]=useState(false),[error,setError]=useState('');
  const reportData=useEffectEvent(onData);
  const key=selection.country==='hk'?new URLSearchParams({source:selection.source,job:selection.job,view:'comparison'}).toString():'';
- useEffect(()=>{if(!key)return;let active=true;const c=new AbortController();const cached=memo.get(key);if(cached&&Date.now()-Date.parse(cached.refreshedAt)<(cached.cache?.ttlSeconds||60)*1000){queueMicrotask(()=>{if(active){setSnapshot(cached);setBusy(false);setError('');reportData(cached);}});return()=>{active=false;};}queueMicrotask(()=>{if(active){setBusy(true);setError('');}});fetch('/api/dashboard?'+key,{signal:c.signal,cache:'no-store'}).then(async r=>{if(!r.ok)throw Error('Unable to load comparison');return r.json() as Promise<DashboardData>;}).then(d=>{if(active){memo.set(key,d);setSnapshot(d);reportData(d);}}).catch(e=>{if(active)setError(e.message);}).finally(()=>{if(active)setBusy(false);});return()=>{active=false;c.abort();};},[key]); // Each selection owns its response.
+ useEffect(()=>{if(!key)return;let active=true;
+ queueMicrotask(()=>{if(active){setBusy(true);setError('');}});
+ // Catalog selection can reuse the dashboard already loaded on this page.
+ const request=!selection.job&&seed?.source===selection.source?Promise.resolve(seed):loadComparison(key);
+ request.then(d=>{if(active){setSnapshot(d);reportData(d);}}).catch(e=>{if(active)setError(e.message);}).finally(()=>{if(active)setBusy(false);});
+ // Ignore stale selections without cancelling a request another column shares.
+ return()=>{active=false;};
+ },[key,seed,selection.job,selection.source]);
+
  const data=selection.country==='hk'&&snapshot?.source===selection.source?snapshot:null;
  return <div className="compare-controls"><div className="compare-column-heading"><strong>Job {selection.id}</strong>{remove&&<Button size="icon-sm" variant="ghost" aria-label="Remove comparison" onClick={remove}><X size={14}/></Button>}</div><div className="compare-filter-grid"><label>Pipeline<DashboardSelect label={'Pipeline '+selection.id} value={selection.source} onChange={v=>change({...selection,source:v as PipelineSource,job:'',date:''})} options={[{value:'lambda',label:'Lambda'},{value:'fargate',label:'Fargate'},{value:'manual',label:'Manual'}]}/></label><label>Country<DashboardSelect label={'Country '+selection.id} value={selection.country} onChange={v=>change({...selection,country:v,job:'',date:''})} options={[{value:'',label:'Select country'},{value:'hk',label:'Hong Kong',icon:'/brand/hong-kong.svg'},{value:'my',label:'Malaysia (Soon)',disabled:true,icon:'/brand/malaysia.svg'},{value:'sg',label:'Singapore (Soon)',disabled:true,icon:'/brand/singapore.svg'}]}/></label><label>Job<DashboardSelect label={'Job '+selection.id} value={selection.job} onChange={v=>change({...selection,job:v,date:''})} options={[{value:'',label:'Select job'},...(data?.jobs||[]).map(j=>({value:j._id,label:shortDate(j.date_from)+(j.date_from===j.date_until?'':' - '+shortDate(j.date_until)),description:j.benchmark_id+' | '+j.date_from+' to '+j.date_until}))]}/></label><label>Activity date<DashboardSelect label={'Activity date '+selection.id} value={selection.date} onChange={v=>change({...selection,date:v})} options={[{value:'',label:'Select activity date'},...(data?.job?._id===selection.job?[...data.comparison].sort((a,b)=>a.date==='all'?-1:b.date==='all'?1:b.date.localeCompare(a.date)):[]).map(d=>({value:d.date,label:shortDate(d.date)}))]}/></label></div>{busy?<div className="compare-loading" role="status"><Loader2 size={13} className="animate-spin"/><span>Loading job snapshot</span><span className="compare-loading-track"/></div>:<small role={error?'alert':undefined}>{!selection.country?'Choose a country to load jobs':error||''}</small>}</div>;
 }

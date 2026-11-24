@@ -60,11 +60,10 @@ export interface ComparisonDay {
 }
 async function comparisonDays(usage: Awaited<ReturnType<typeof collections>>["usage"], ids: string[], runs: Document[], source: PipelineSource) {
   const counts = await usage.aggregate([
-    {$match:{record_type:"post_count",run_id:{$in:ids},reporting_date_my:{$type:"string"},post_id:{$type:"string"},metric:{$type:"string"}}},
+    {$match:{record_type:"post_count",run_id:{$in:ids},reporting_date_my:{$type:"string"},post_id:{$type:"string"},metric:{$in:terminalMetrics}}},
     {$set:{comparison_dates:["$reporting_date_my","all"]}},{$unwind:"$comparison_dates"},
-    {$group:{_id:{date:"$comparison_dates",post:"$post_id"},metrics:{$addToSet:"$metric"}}},
-    {$project:{keys:{$concatArrays:["$metrics",{$cond:[{$gt:[{$size:{$setIntersection:["$metrics",terminalMetrics]}},0]},["__processed"],[]]}]}}},
-    {$unwind:"$keys"},{$group:{_id:{date:"$_id.date",metric:"$keys"},count:{$sum:1}}}
+    {$group:{_id:{date:"$comparison_dates",post:"$post_id"}}},
+    {$group:{_id:{date:"$_id.date",metric:{$literal:"__processed"}},count:{$sum:1}}}
   ], options).toArray();
   const days = new Map<string, ComparisonDay>();
   function day(date:string) {
@@ -300,4 +299,12 @@ export async function findRuns(kind:string, query:string, source: PipelineSource
  limited ||= links.length>100;
  const runs=await usage.find({record_type:"run",_id:{$in:links.slice(0,100).map(r=>String(r._id))}},{...options,projection:{stage:1,status:1,started_at:1}}).sort({started_at:-1,_id:1}).toArray();
  return {runs,limited,note:kind==="user"?"Matches retained staging posts for this exact user ID. Removed staging records cannot be searched by user.":"Matches recorded events for this exact post ID, across report dates."};
+}
+
+// Comparison adds only its distinct-post/timing metrics to a cached overview.
+export async function comparisonForSnapshot(data:DashboardData,source:PipelineSource){
+ const {usage}=await collections(source);
+ const ids=data.report.runs.map(run=>run.run_id);
+ const runs=await usage.find({_id:{$in:ids},record_type:'run'},{...options,projection:{started_at:1,finished_at:1}}).toArray();
+ return comparisonDays(usage,ids,runs,source);
 }
