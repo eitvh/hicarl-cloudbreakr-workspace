@@ -147,7 +147,7 @@ Staging uses the authenticated `/api/staging` endpoint independently of dashboar
 
 ## Cloudbreakr Workspace
 
-The repository now contains one Next.js workspace. `/` redirects to `/monitoring`. The module menu reserves Influencer search and Post search as Coming soon; they do not fetch data.
+The repository now contains one Next.js workspace. `/` is the workspace home; `/monitoring` opens pipeline monitoring. The module menu reserves Influencer search and Post search as Coming soon; they do not fetch data.
 
 - `src/features/monitoring/components`: monitoring UI.
 - `src/features/monitoring/server`: MongoDB queries and snapshot caching.
@@ -160,3 +160,7 @@ The repository now contains one Next.js workspace. `/` redirects to `/monitoring
 Keep the existing root `.env` or `.env.local` and Vercel environment variables. Variable names, read-only database access, and cache lifetimes are unchanged. Do not commit secrets. Future modules can use their own prefixed variables in this same environment configuration.
 
 The package name is `cloudbreakr-workspace`. The local folder, GitHub repository, and Vercel project have not been renamed; change those separately after validating the migration.
+
+The shared sidebar supports a persisted collapsed state and a mobile drawer. Home displays module availability without fetching monitoring or MongoDB data. Influencer search and Post search remain disabled until implemented.
+
+Workspace navigation now uses the official shadcn Sidebar with icon collapse, keyboard toggle, tooltips, and mobile Sheet. `/` opens Monitoring directly; the promotional home is disabled until additional modules are available.
