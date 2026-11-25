@@ -1,4 +1,4 @@
-﻿import type {DashboardData,Run,ApiTotals} from './dashboard';
+﻿import type {DashboardData,Run,ApiTotals} from '../server/dashboard';
 export type DailyGroup={_id:{key:unknown;day?:string};[key:string]:unknown};
 export function mergeDailyGroups(rows:DailyGroup[],date:string):Record<string,unknown>[] {
  const merged=new Map<string,Record<string,unknown>>();

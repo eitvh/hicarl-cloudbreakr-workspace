@@ -1,0 +1,19 @@
+import { invalidateStaging } from "@/features/monitoring/server/staging-page";
+import { pipelineSource } from "@/features/monitoring/lib/pipeline-source";
+﻿import { cachedDashboard } from "@/features/monitoring/server/dashboard-cache";
+import { mongoFailure } from "@/lib/mongo-diagnostics";
+import { NextRequest, NextResponse } from "next/server";
+export const maxDuration=60;
+export async function GET(request: NextRequest) {
+ const source=pipelineSource(request.nextUrl.searchParams.get("source"));
+ if(!source)return NextResponse.json({error:"Unknown pipeline source."},{status:400});
+ const params=request.nextUrl.searchParams;
+ if(params.get("refresh")==="1")invalidateStaging(source);
+ try{return NextResponse.json(await cachedDashboard(params,source),{headers:{"Cache-Control":"private, no-store"}});}
+ catch(error){
+  const failure=mongoFailure(error),reference=crypto.randomUUID();
+  // Only allowlisted classifications; never log URI, credentials, raw messages or query contents.
+  console.error('monitoring_read_failed',{reference,code:failure.code});
+  return NextResponse.json({error:`${failure.code}: ${failure.hint} Reference: ${reference}`,code:failure.code,reference},{status:503,headers:{"Cache-Control":"private, no-store"}});
+ }
+}

@@ -1,1 +1,1 @@
-﻿export { DashboardLoading as default } from "@/components/dashboard-loading";
+﻿export { DashboardLoading as default } from "@/features/monitoring/components/dashboard-loading";

@@ -1,6 +1,6 @@
 ﻿"use client";
 import { useState } from "react";
-import { AWS_RATES,lambdaEstimate,queueEstimate,schedulerEstimate } from "@/lib/aws-cost";
+import { AWS_RATES,lambdaEstimate,queueEstimate,schedulerEstimate } from "@/features/monitoring/lib/aws-cost";
 import { DashboardSelect } from "@/components/dashboard-select";
 import { InfoTip } from "@/components/info-tip";
 import { Input } from "@/components/ui/input";

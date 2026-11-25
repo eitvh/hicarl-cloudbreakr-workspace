@@ -3,8 +3,8 @@ import {createHash} from 'node:crypto';
 import {gzipSync,gunzipSync} from 'node:zlib';
 import {unstable_cache,revalidateTag} from 'next/cache';
 import type {Document} from 'mongodb';
-import {collections,type DashboardData} from '@/lib/dashboard';
-import type {PipelineSource} from '@/lib/pipeline-source';
+import {collections,type DashboardData} from '@/features/monitoring/server/dashboard';
+import type {PipelineSource} from '@/features/monitoring/lib/pipeline-source';
 
 export const STAGING_PAGE_SIZE=4;
 export type StagingPage=Pick<DashboardData,'posts'|'page'|'postCount'|'postCountExact'> & {job:string;date:string;hasMore:boolean};

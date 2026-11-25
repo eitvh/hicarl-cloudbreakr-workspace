@@ -1,6 +1,6 @@
 ﻿import assert from 'node:assert/strict';
 import {test} from 'node:test';
-import {lambdaEstimate,queueEstimate,schedulerEstimate} from '../src/lib/aws-cost.ts';
+import {lambdaEstimate,queueEstimate,schedulerEstimate} from '../src/features/monitoring/lib/aws-cost.ts';
 test('partial Lambda sample cost uses configured GB-seconds plus per-request rate',()=>{
  const result=lambdaEstimate(106.144,136,'x86');assert.ok(Math.abs(result.total-0.0017962702048)<1e-12);assert.ok(lambdaEstimate(106.144,136,'arm').total<result.total);
 });

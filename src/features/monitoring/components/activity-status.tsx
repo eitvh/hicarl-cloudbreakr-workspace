@@ -1,9 +1,9 @@
 "use client";
 import { useEffect, useState } from "react";
-import type { DashboardData } from "@/lib/dashboard";
+import type { DashboardData } from "@/features/monitoring/server/dashboard";
 import { Activity, Clock3 } from "lucide-react";
-import { jobStatus, sourceLabel, type PipelineSource } from "@/lib/pipeline-source";
-import { LatestActivity } from "@/components/latest-activity";
+import { jobStatus, sourceLabel, type PipelineSource } from "@/features/monitoring/lib/pipeline-source";
+import { LatestActivity } from "@/features/monitoring/components/latest-activity";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
@@ -31,20 +31,21 @@ export function ActivityStatus({source,data,error}:{source:PipelineSource;data:D
   useEffect(() => {
     const controller = new AbortController();
     let loading = false;
+    let live = false;
     async function refresh() {
       if (loading) return;
       loading = true;
       try {
-        const response = await fetch("/api/dashboard?view=live&source="+otherSource, {signal:controller.signal,cache:"no-store"});
+        const response = await fetch("/api/monitoring/dashboard?view=live&source="+otherSource, {signal:controller.signal,cache:"no-store"});
         if (!response.ok) throw Error();
         const snapshot: DashboardData = await response.json();
-        if (!controller.signal.aborted) { setOther(snapshot); setOtherUnavailable(false); }
+        if (!controller.signal.aborted) { live = ["fetching","embedding","attention"].includes(snapshot.activity.state); setOther(snapshot); setOtherUnavailable(false); }
       } catch {
         if (!controller.signal.aborted) setOtherUnavailable(true);
       } finally { loading = false; }
     }
     void refresh();
-    const timer = setInterval(refresh,120_000);
+    const timer = setInterval(()=>{if(live)void refresh();},120_000);
     return () => { controller.abort(); clearInterval(timer); };
   },[otherSource]);
 

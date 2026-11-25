@@ -1,13 +1,13 @@
 "use client";
 import Image from "next/image";
-import { sourceLabel, stageLabel, type PipelineSource } from "@/lib/pipeline-source";
+import { sourceLabel, stageLabel, type PipelineSource } from "@/features/monitoring/lib/pipeline-source";
 import { useEffect, useState } from "react";
-import type { RunInspection } from "@/lib/dashboard";
+import type { RunInspection } from "@/features/monitoring/server/dashboard";
 import { Dialog,DialogContent,DialogHeader,DialogTitle,DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { CaptionViewer } from "@/components/caption-viewer";
+import { CaptionViewer } from "@/features/monitoring/components/caption-viewer";
 import { CopyCode } from "@/components/copy-code";
 const time=(s?:string)=>s?new Date(s).toLocaleString("en-GB",{timeZone:"Asia/Hong_Kong"}):"Not recorded";
 function RunDetailsSkeleton() {
@@ -29,7 +29,7 @@ export function RunInspector({source,id,onClose}:{source:PipelineSource;id:strin
   const controller=new AbortController();
   const timer=setTimeout(()=>{
    setBusy(true);setError("");
-   fetch("/api/runs/"+encodeURIComponent(id)+"?source="+source+"&page="+page,{signal:controller.signal,cache:"no-store"}).then(async r=>{const d=await r.json();if(!r.ok)throw Error(d.error);return d;}).then(d=>setResult(d)).catch(e=>{if(!controller.signal.aborted){setResult(null);setError(e.message);}}).finally(()=>{if(!controller.signal.aborted)setBusy(false);});
+   fetch("/api/monitoring/runs/"+encodeURIComponent(id)+"?source="+source+"&page="+page,{signal:controller.signal,cache:"no-store"}).then(async r=>{const d=await r.json();if(!r.ok)throw Error(d.error);return d;}).then(d=>setResult(d)).catch(e=>{if(!controller.signal.aborted){setResult(null);setError(e.message);}}).finally(()=>{if(!controller.signal.aborted)setBusy(false);});
   },0);
   return()=>{clearTimeout(timer);controller.abort();};
  },[id,page,source]);

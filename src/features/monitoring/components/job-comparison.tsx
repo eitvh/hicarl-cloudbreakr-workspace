@@ -1,8 +1,8 @@
 ﻿"use client";
 import {Fragment,useEffect,useState,useEffectEvent} from 'react';
 import {Bookmark,Plus,X,Maximize2,Download,Loader2} from 'lucide-react';
-import type {DashboardData} from '@/lib/dashboard';
-import type {PipelineSource} from '@/lib/pipeline-source';
+import type {DashboardData} from '@/features/monitoring/server/dashboard';
+import type {PipelineSource} from '@/features/monitoring/lib/pipeline-source';
 import {DashboardSelect} from '@/components/dashboard-select';
 import {Button} from '@/components/ui/button';
 import {Tooltip,TooltipProvider,TooltipTrigger,TooltipContent} from '@/components/ui/tooltip';
@@ -15,7 +15,7 @@ function loadComparison(key:string){
  const cached=memo.get(key);
  if(cached&&Date.now()-Date.parse(cached.cache?.savedAt||cached.refreshedAt)<(cached.cache?.ttlSeconds||60)*1000)return Promise.resolve(cached);
  const existing=pending.get(key);if(existing)return existing;
- const request=fetch('/api/dashboard?'+key,{cache:'no-store'}).then(async r=>{if(!r.ok)throw Error('Unable to load comparison');return r.json() as Promise<DashboardData>;}).then(data=>{memo.set(key,data);if(memo.size>16)memo.delete(memo.keys().next().value!);return data;}).finally(()=>pending.delete(key));
+ const request=fetch('/api/monitoring/dashboard?'+key,{cache:'no-store'}).then(async r=>{if(!r.ok)throw Error('Unable to load comparison');return r.json() as Promise<DashboardData>;}).then(data=>{memo.set(key,data);if(memo.size>16)memo.delete(memo.keys().next().value!);return data;}).finally(()=>pending.delete(key));
  pending.set(key,request);return request;
 }
 const shortDate=(value:string)=>value==='all'?'All activity dates':new Date(value+'T00:00:00Z').toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric',timeZone:'UTC'});

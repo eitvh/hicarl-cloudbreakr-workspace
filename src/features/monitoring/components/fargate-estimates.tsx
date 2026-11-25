@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { parseFargateCsv, summarizeFargate, fargateUsage, type FargateEvent } from "@/lib/fargate-usage";
+import { parseFargateCsv, summarizeFargate, fargateUsage, type FargateEvent } from "@/features/monitoring/lib/fargate-usage";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -23,7 +23,7 @@ export function FargateEstimates() {
   const input = useRef<HTMLInputElement>(null);
   useEffect(()=>{
     const controller=new AbortController();
-    fetch("/api/fargate-snapshot",{signal:controller.signal,cache:"no-store"})
+    fetch("/api/monitoring/fargate-snapshot",{signal:controller.signal,cache:"no-store"})
       .then(async r=>{if(!r.ok)throw Error("Unable to load saved Fargate snapshot");return r.json() as Promise<Snapshot>;})
       .then(value=>{setSnapshot(value);setEvents(value.events);setFiles(value.files.map(f=>f.name));})
       .catch(e=>{if(!controller.signal.aborted)setError(e instanceof Error?e.message:"Unable to load snapshot");})
@@ -111,7 +111,7 @@ export function FargateEstimates() {
         {custom&&<Button variant="outline" disabled={loading||!snapshot} onClick={()=>{if(snapshot){setEvents(snapshot.events);setFiles(snapshot.files.map(f=>f.name));setCustom(false);setError("");setPage(1);}}}>Saved snapshot</Button>}
       </div>
       {snapshot&&<div className="snapshot-downloads">{snapshot.files.map((f,i)=><a key={f.url} href={f.url} download><span>Original export {i+1}</span><small>{f.name}</small><strong>Download CSV</strong></a>)}</div>}
-      <a href="/api/fargate-snapshot?evidence=1" download>Download ECS task evidence (selected fields)</a>
+      <a href="/api/monitoring/fargate-snapshot?evidence=1" download>Download ECS task evidence (selected fields)</a>
       <p>Saved originals remain available. Custom imports replace only this browser snapshot.</p>
     </>:<>
       {evidence&&<div className="aws-coverage">

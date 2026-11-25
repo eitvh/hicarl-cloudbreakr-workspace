@@ -1,6 +1,6 @@
 "use client";
 import { ChevronRight } from "lucide-react";
-import { stageLabel, sourceLabel, type PipelineSource } from "@/lib/pipeline-source";
+import { stageLabel, sourceLabel, type PipelineSource } from "@/features/monitoring/lib/pipeline-source";
 import { useRef,useEffect,useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,7 +22,7 @@ export function RunSearch({source,onSelect}:{source:PipelineSource;onSelect:(id:
   if(kind==="run"){onSelect(q.trim().toLowerCase());return;}
   setSubmitted({kind,id:q.trim()});
   const request=new AbortController();controller.current=request;setBusy(true);
-  try{const r=await fetch("/api/investigate?"+new URLSearchParams({source,kind,q:q.trim()}),{signal:request.signal,cache:"no-store"});const d=await r.json();if(!r.ok)throw Error(d.error);setRows(d.runs);setMessage(d.note+(d.limited?" Limited to 100 posts/runs. Search a specific post to narrow results.":"")+(d.runs.length?"":" No matching runs found."));}catch(e){if(!request.signal.aborted)setMessage(e instanceof Error?e.message:"Search failed.");}finally{if(!request.signal.aborted)setBusy(false);}
+  try{const r=await fetch("/api/monitoring/investigate?"+new URLSearchParams({source,kind,q:q.trim()}),{signal:request.signal,cache:"no-store"});const d=await r.json();if(!r.ok)throw Error(d.error);setRows(d.runs);setMessage(d.note+(d.limited?" Limited to 100 posts/runs. Search a specific post to narrow results.":"")+(d.runs.length?"":" No matching runs found."));}catch(e){if(!request.signal.aborted)setMessage(e instanceof Error?e.message:"Search failed.");}finally{if(!request.signal.aborted)setBusy(false);}
  }
  return <div className="investigation-search"><form className="run-search" onSubmit={e=>{e.preventDefault();void search();}}><DashboardSelect label="Search identifier type" value={kind} onChange={v=>{setKind(v);setRows([]);setMessage("");}} options={[{value:"run",label:"Run UUID"},{value:"post",label:"Post ID"},{value:"user",label:"User ID"}]}/><Input aria-label="Investigation identifier" placeholder={kind==="run"?"Paste full run UUID":"Enter exact "+kind+" ID"} value={q} onChange={e=>setQ(e.target.value)}/><Button disabled={busy||!q.trim()} type="submit">{busy?"Searching":"Investigate"}</Button></form>{busy?<Skeleton className="h-12"/>:message&&<Dialog open={!!message} onOpenChange={open=>{if(!open)setMessage("");}}><DialogContent className="search-dialog" onBackdropClick={()=>setMessage("")}><DialogHeader className="match-header">
    <DialogTitle>Matching runs</DialogTitle>

@@ -1,17 +1,17 @@
 /* Shared by the dashboard, sign-in screen and portalled controls. */
 :root {
-  --background: #f5f5f6;
-  --foreground: #202127;
-  --card: #fff;
-  --popover: #fff;
-  --muted: #ebebee;
-  --muted-foreground: #595c66;
-  --border: #d7d8dd;
-  --input: #c3c5cd;
-  --primary: #2859bb;
-  --primary-foreground: #fff;
-  --accent: #e7eaf1;
-  --accent-foreground: #253752;
+  --background: #e9edf5;
+  --foreground: #1e293b;
+  --card: #f8faff;
+  --popover: #f8faff;
+  --muted: #e3e9f4;
+  --muted-foreground: #526079;
+  --border: #cbd5e5;
+  --input: #b6c4dc;
+  --primary: #4355c5;
+  --primary-foreground: #ffffff;
+  --accent: #dfe5fc;
+  --accent-foreground: #303f94;
   --ring: var(--primary);
   --secondary: var(--muted);
   --secondary-foreground: var(--foreground);
@@ -680,3 +680,102 @@ html.theme-fade,html.theme-fade *{transition:background-color 400ms ease,color 4
 .dash-filters{grid-template-columns:minmax(0,1fr) minmax(0,1fr) auto}@media(max-width:760px){.dash-filters{grid-template-columns:minmax(0,1fr)} }
 
 .staging-scope-note{font-size:11px;line-height:1.5;color:var(--muted-foreground);margin:0}
+
+/* Overview: fill available space with stage cards, not stretched chart rows. */
+.date-overview{height:100%;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:16px}
+.date-overview .dash-panel{min-width:0;gap:14px!important}
+.activity-panel-heading{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.activity-panel-heading>span{font-size:11px;color:var(--muted-foreground)}
+.activity-stage-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:repeat(2,minmax(0,1fr));gap:12px;flex:1;min-height:0;flex-shrink:1!important}
+.activity-stage-card{border:1px solid var(--border);border-radius:12px;background:color-mix(in srgb,var(--muted) 40%,var(--card));padding:clamp(12px,1.4vw,22px);display:flex;flex-direction:column;justify-content:space-between;gap:12px;min-width:0;min-height:0}
+.activity-stage-heading{display:flex;align-items:center;gap:8px;color:var(--primary)}
+.activity-stage-heading h3{font-size:12px;font-weight:600;color:var(--foreground)}
+.activity-stage-heading>span{margin-left:auto;font-size:11px;color:var(--muted-foreground);font-variant-numeric:tabular-nums}
+.activity-stage-value{display:grid;gap:4px}
+.activity-stage-value>strong{font-size:clamp(22px,2.4vw,38px);font-weight:650;letter-spacing:-.045em;line-height:1.1;font-variant-numeric:tabular-nums}
+.activity-stage-value>span,.activity-stage-details span{font-size:11px;color:var(--muted-foreground)}
+.activity-stage-details{display:flex;gap:16px;min-height:20px}
+.activity-stage-details>div{display:flex;gap:8px;align-items:center;font-size:12px}
+.activity-error{color:#f87171}
+.activity-reliability{padding:clamp(14px,1.7vw,26px);border-radius:12px;background:var(--muted);display:flex;flex-direction:column;justify-content:center;gap:16px;flex:1;min-height:0;flex-shrink:1!important}
+.activity-reliability-title{display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:6px}
+.activity-reliability-title>span{font-size:13px;font-weight:500;line-height:1.4;color:var(--muted-foreground)}
+.activity-reliability-title>strong{font-size:clamp(24px,2.6vw,42px);letter-spacing:-.04em;line-height:1.1;font-variant-numeric:tabular-nums}
+.activity-result-track{height:10px;display:flex;border-radius:20px;overflow:hidden;background:var(--border)}
+.activity-result-track i{background:#34d399}.activity-result-track b{background:#f87171}
+.activity-result-counts{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;font-size:12px}
+.activity-result-counts>span{display:flex;align-items:center;gap:6px;color:var(--muted-foreground)}
+.activity-result-counts strong{color:var(--foreground);margin-left:4px}
+.activity-result-counts i{width:6px;height:6px;border-radius:50%;background:#34d399}.activity-result-counts>span:last-child i{background:#f87171}
+.activity-resources{display:grid;gap:0}
+.activity-resources>div{display:flex;align-items:center;justify-content:space-between;padding:clamp(10px,1.7vh,20px) 0;border-bottom:1px solid var(--border);gap:12px;font-size:13px}
+.activity-resources span{color:var(--muted-foreground)}
+.activity-staging-note{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;border:1px solid var(--border);border-radius:10px}
+.activity-staging-note>div{display:grid;gap:5px}.activity-staging-note span,.activity-staging-note small{font-size:11px;color:var(--muted-foreground);font-weight:400}.activity-staging-note strong{font-size:14px}
+@media(max-height:800px){.date-overview .dash-panel{gap:10px!important}.activity-stage-card{padding:12px;gap:8px}.activity-stage-value>strong{font-size:26px}.activity-stage-grid{gap:8px}.activity-reliability{padding:12px;gap:10px}.activity-reliability-title>strong{font-size:28px}.activity-resources>div{padding:8px 0}.activity-staging-note{padding:8px 10px}}
+@media(max-width:1000px){.activity-stage-heading{gap:5px}.activity-stage-heading>span{display:none}.activity-stage-details{gap:8px;flex-wrap:wrap}.activity-result-counts{font-size:11px}.activity-reliability-title{flex-wrap:wrap}}
+@media(max-width:760px){.date-overview{height:auto;grid-template-columns:1fr}.activity-stage-grid{grid-template-rows:auto auto;flex:auto}.activity-stage-card{min-height:140px}.activity-reliability{min-height:130px;flex:auto}}
+
+/* Compact API summary: outcomes and resource usage have distinct visual groups. */
+.health-summary-body{display:flex;flex:1;flex-direction:column;justify-content:center;gap:18px;min-height:0;flex-shrink:1!important}
+.health-outcomes{display:grid;grid-template-columns:minmax(120px,.85fr) minmax(0,1.15fr);gap:20px;align-items:center;flex:1;min-height:0}
+.health-ring{position:relative;width:100%;max-width:190px;aspect-ratio:1;justify-self:center}
+.health-ring svg{display:block;width:100%;height:100%;overflow:visible}
+.health-ring circle{fill:none;stroke-width:7}
+.health-ring-track{stroke:var(--border)}.health-ring-failed{stroke:#f87171}.health-ring-success{stroke:#34d399;transition:stroke-dasharray .6s ease}
+.health-ring>div{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px}
+.health-ring strong{font-size:clamp(22px,2.2vw,32px);letter-spacing:-.045em;font-variant-numeric:tabular-nums;line-height:1.1}
+.health-ring span{font-size:11px;color:var(--muted-foreground)}
+.health-outcome-cards{display:grid;gap:10px;min-width:0}
+.health-outcome{display:flex;align-items:center;gap:10px;padding:12px;border:1px solid var(--border);border-radius:11px;background:color-mix(in srgb,var(--muted) 55%,var(--card))}
+.health-outcome-icon{display:grid;place-items:center;width:28px;height:28px;border-radius:8px;flex-shrink:0}
+.health-outcome.success .health-outcome-icon{color:#34d399;background:#34d39915}.health-outcome.failed .health-outcome-icon{color:#f87171;background:#f8717115}
+.health-outcome>div{display:grid;gap:3px}.health-outcome>div>span{font-size:11px;color:var(--muted-foreground)}.health-outcome strong{font-size:20px;font-variant-numeric:tabular-nums;line-height:1.2}.health-outcome small{margin-left:auto;font-size:11px;white-space:nowrap}
+.health-outcome-cards>p{font-size:11px;margin:0;color:var(--muted-foreground)}
+.health-metric-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.health-metric-grid>div{display:grid;gap:12px;padding:16px 12px;background:var(--muted);border-radius:10px;min-width:0}
+.health-metric-grid span{display:flex;gap:6px;align-items:center;font-size:11px;color:var(--muted-foreground)}.health-metric-grid strong{font-size:clamp(16px,1.6vw,22px);font-variant-numeric:tabular-nums;letter-spacing:-.025em;overflow-wrap:anywhere}
+@media(max-width:1100px){.health-outcomes{gap:12px;grid-template-columns:minmax(100px,.85fr) minmax(0,1.15fr)}.health-outcome{padding:10px;gap:7px}.health-outcome small{display:none}.health-metric-grid{gap:6px}.health-metric-grid>div{padding:12px 8px}.health-metric-grid span svg{display:none}}
+@media(max-height:800px){.health-ring{max-width:145px}.health-summary-body{gap:12px}.health-outcome{padding:8px 10px}.health-outcome-cards{gap:7px}.health-metric-grid>div{padding:10px;gap:6px}}
+@media(prefers-reduced-motion:reduce){.health-ring-success{transition:none}}
+
+/* Login: one clear introduction and form, without repeated access banners. */
+.login-modern .login-shell{min-height:0;grid-template-columns:1.1fr 1fr;max-width:1040px}
+.login-modern .login-story{justify-content:center;gap:36px;padding:40px}
+.login-modern .login-story-copy{padding:0}
+.login-modern .login-story-copy h2{font-size:clamp(34px,3.7vw,48px)}
+.login-modern .login-card{justify-content:center;padding:40px!important;gap:28px!important}
+.login-modern .login-card h1{margin:0 0 8px}
+.login-modern .login-card form{margin:0}
+@media(max-width:900px){.login-modern .login-story,.login-modern .login-card{padding:30px!important}.login-modern .login-story{gap:28px}}
+@media(max-width:760px){.login-modern .login-shell{grid-template-columns:1fr;max-width:440px}.login-modern .login-story{padding:24px!important}.login-modern .login-card{padding:28px!important}}
+
+/* Light theme: layered blue-gray surfaces with legible semantic accents. */
+html:not(.dark) .pipeline-header{background:linear-gradient(115deg,#e4eaff,#f5f7ff 60%,#eee8fb);border-color:#c8d2e6;box-shadow:0 4px 18px #263d6b0b}
+html:not(.dark) .dash-panel,html:not(.dark) .dash-metric{border:1px solid #cbd5e5;box-shadow:0 3px 12px #263d6b08!important}
+html:not(.dark) .dash-metric{background:linear-gradient(125deg,#f8faff,#eef1fb)}
+html:not(.dark) .side-nav button.selected{background:#dce3fc;color:#303f94;box-shadow:inset 3px 0 #5261ce}
+html:not(.dark) .side-nav button:hover{background:#e0e6f4}
+html:not(.dark) .health-outcome.success{background:#e9f5ee;border-color:#bddbc9}
+html:not(.dark) .health-outcome.failed{background:#fff0f0;border-color:#ebcccc}
+html:not(.dark) .health-outcome.success .health-outcome-icon{color:#147647;background:#d4ecde}
+html:not(.dark) .health-outcome.failed .health-outcome-icon{color:#b83545;background:#f7dce0}
+html:not(.dark) .health-ring-success{stroke:#15966b}html:not(.dark) .health-ring-failed{stroke:#cf4b5a}
+html:not(.dark) .activity-error{color:#b83545}
+html:not(.dark) .activity-staging-note{background:#edf1f9}
+html:not(.dark) .comparison-v2-table thead th{background:#e1e7f5}
+html:not(.dark) .comparison-v2-table .comparison-section-row th{background:#dce3f8;color:#3546a0;border-color:#c4cfe8}
+html:not(.dark) .comparison-v2-table tbody tr:not(.comparison-section-row):nth-child(even){background:#eef2f9}
+html:not(.dark) .comparison-v2-table tbody tr:not(.comparison-section-row):hover{background:#e3eafb}
+html:not(.dark) .compare-controls [data-slot=select-trigger]{background:#f4f7ff;border-color:#b8c6e0}
+html:not(.dark) .pipeline-header .last-run[data-state=completed] [data-slot=badge],html:not(.dark) .api-success{background:#dcefe3!important;color:#17643b!important;border-color:#afcfba!important}
+html:not(.dark) .api-failure{background:#fae2e5!important;color:#a92839!important;border-color:#e6b5bd!important}
+html:not(.dark) [data-slot=tooltip-content]{background:#26334c;color:#f5f7ff;border:1px solid #43526f;box-shadow:0 6px 20px #17243b26}
+html:not(.dark) [data-slot=tooltip-content]>svg{background:#26334c;fill:#26334c}
+html:not(.dark) .login-story-copy h2 em{background-image:linear-gradient(110deg,#4355b9,#9454a0)}
+
+/* Use one shared surface for every processing stage in light mode. */
+html:not(.dark) .activity-stage-card{background:#edf1f9;border-color:#cbd5e5}
+html:not(.dark) .activity-stage-heading{color:var(--primary)}
+
+.workspace-identity,.workspace-header-actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap}.workspace-module-trigger{display:flex;align-items:center;gap:7px;border:1px solid var(--border);background:var(--muted);padding:6px 10px;border-radius:8px;font-size:11px;cursor:pointer}.workspace-module-menu{width:290px}.workspace-module-item{display:flex;align-items:center;gap:10px;padding:12px 10px;border-radius:8px;font-size:12px;cursor:pointer}.workspace-module-item>span{flex:1}.workspace-module-item small{font-size:10px;color:var(--muted-foreground)}.workspace-module-item[data-disabled]{opacity:.55;cursor:default}.workspace-module-item[data-highlighted]{background:var(--accent);outline:none}@media(max-width:600px){.workspace-identity{gap:7px}.workspace-module-trigger{padding:5px 7px}.workspace-header-actions{gap:6px}}

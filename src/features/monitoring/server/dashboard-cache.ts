@@ -1,11 +1,11 @@
-import {selectSnapshotDate} from "@/lib/report-selection";
+import {selectSnapshotDate} from "@/features/monitoring/lib/report-selection";
 import 'server-only';
 import {unstable_cache,revalidateTag} from 'next/cache';
 import {gzipSync,gunzipSync} from 'node:zlib';
-import type {DashboardData} from '@/lib/dashboard';
+import type {DashboardData} from '@/features/monitoring/server/dashboard';
 import {createHash} from 'node:crypto';
-import {dashboard,comparisonForSnapshot} from '@/lib/dashboard';
-import type {PipelineSource} from '@/lib/pipeline-source';
+import {dashboard,comparisonForSnapshot} from '@/features/monitoring/server/dashboard';
+import type {PipelineSource} from '@/features/monitoring/lib/pipeline-source';
 const VERSION='monitor-snapshot-v15';
 export function dashboardCacheKey(params:URLSearchParams,source:PipelineSource){const clean=new URLSearchParams();for(const key of ['job','date','status','page','postId','userId','publication','view']){const value=params.get(key);if(value)clean.set(key,value);}clean.sort();return source+':'+clean.toString();}
 export async function cachedDashboard(params:URLSearchParams,source:PipelineSource):Promise<DashboardData>{

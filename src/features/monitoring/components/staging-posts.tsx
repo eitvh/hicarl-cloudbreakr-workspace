@@ -1,6 +1,6 @@
 ﻿"use client";
 import { useState } from "react";
-import type { DashboardData } from "@/lib/dashboard";
+import type { DashboardData } from "@/features/monitoring/server/dashboard";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { DashboardSelect } from "@/components/dashboard-select";
 import { CopyCode } from "@/components/copy-code";
 import { Dialog,DialogContent,DialogHeader,DialogTitle,DialogDescription } from "@/components/ui/dialog";
-import { CaptionContent } from "@/components/caption-viewer";
+import { CaptionContent } from "@/features/monitoring/components/caption-viewer";
 import { PopupTransition } from "@/components/popup-transition";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { Pagination } from "@/components/ui/pagination";

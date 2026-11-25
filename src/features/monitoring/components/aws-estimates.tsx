@@ -1,19 +1,19 @@
 ﻿"use client";
 import { useEffect,useState } from "react";
-import { parseLambdaReports,type ReportRow } from "@/lib/log-report";
-import { AwsUsageEstimate } from "@/components/aws-usage-estimate";
-import type { DashboardData } from "@/lib/dashboard";
+import { parseLambdaReports,type ReportRow } from "@/features/monitoring/lib/log-report";
+import { AwsUsageEstimate } from "@/features/monitoring/components/aws-usage-estimate";
+import type { DashboardData } from "@/features/monitoring/server/dashboard";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { AwsInvocation } from "@/components/aws-invocation";
+import { AwsInvocation } from "@/features/monitoring/components/aws-invocation";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { Pagination } from "@/components/ui/pagination";
 type Snapshot={benchmark:string;rows:ReportRow[];duplicates:number;start:number;end:number;files:{name:string;url:string;reports:number}[]};
 export function AwsEstimates({benchmark,data}:{benchmark?:string;data:DashboardData}){
  const [selected,setSelected]=useState<ReportRow|null>(null);
  const [snapshot,setSnapshot]=useState<Snapshot|null>(null),[custom,setCustom]=useState<ReportRow[]|null>(null),[name,setName]=useState(""),[error,setError]=useState(""),[page,setPage]=useState(1),[tab,setTab]=useState("summary"),[loading,setLoading]=useState(false);
- useEffect(()=>{if(benchmark!=="full-20261119-v1")return;const c=new AbortController();const timer=setTimeout(()=>{setLoading(true);fetch('/api/aws-snapshot',{signal:c.signal,cache:'no-store'}).then(async r=>{if(!r.ok)throw Error('Unable to load saved logs');return r.json();}).then(setSnapshot).catch(e=>{if(!c.signal.aborted)setError(e.message);}).finally(()=>{if(!c.signal.aborted)setLoading(false);});},0);return()=>{clearTimeout(timer);c.abort();};},[benchmark]);
+ useEffect(()=>{if(benchmark!=="full-20261119-v1")return;const c=new AbortController();const timer=setTimeout(()=>{setLoading(true);fetch('/api/monitoring/aws-snapshot',{signal:c.signal,cache:'no-store'}).then(async r=>{if(!r.ok)throw Error('Unable to load saved logs');return r.json();}).then(setSnapshot).catch(e=>{if(!c.signal.aborted)setError(e.message);}).finally(()=>{if(!c.signal.aborted)setLoading(false);});},0);return()=>{clearTimeout(timer);c.abort();};},[benchmark]);
  async function read(files:FileList|null){if(!files?.length)return;setError("");setPage(1);try{const all:ReportRow[]=[];for(const file of Array.from(files)){if(file.size>5*1024*1024)throw Error('Each file must be smaller than 5 MB');all.push(...parseLambdaReports(await file.text()));}if(!all.length)throw Error('No Lambda REPORT records found');setCustom([...new Map(all.map(r=>[r.requestId,r])).values()]);setName(Array.from(files).map(f=>f.name).join(' | '));}catch(e){setError(e instanceof Error?e.message:'Import failed');}}
  const rows=custom||snapshot?.rows||[];
  const billed=rows.reduce((n,r)=>n+r.billedMs/1000,0),compute=rows.reduce((n,r)=>n+r.billedMs/1000*r.memoryMb/1024,0);

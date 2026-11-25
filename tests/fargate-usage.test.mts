@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import {parseFargateCsv,summarizeFargate,fargateUsage} from "../src/lib/fargate-usage.ts";
+import {parseFargateCsv,summarizeFargate,fargateUsage} from "../src/features/monitoring/lib/fargate-usage.ts";
 test("CSV handles quoted multiline messages and overlapping exports",()=>{
  const csv='timestamp,message,logStream\n1795500000000,"hello, ""world""\nnext line",ecs/pipeline/a\n1795500120000,end,ecs/pipeline/a';
  const events=parseFargateCsv(csv);

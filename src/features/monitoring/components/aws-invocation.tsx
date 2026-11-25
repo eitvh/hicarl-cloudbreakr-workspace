@@ -1,16 +1,16 @@
 ﻿"use client";
 import { useEffect,useState } from "react";
-import type { ReportRow } from "@/lib/log-report";
-import type { LogEvent } from "@/lib/cloudwatch-events";
+import type { ReportRow } from "@/features/monitoring/lib/log-report";
+import type { LogEvent } from "@/features/monitoring/lib/cloudwatch-events";
 import { Dialog,DialogContent,DialogHeader,DialogTitle,DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { CopyCode } from "@/components/copy-code";
 import { PopupTransition } from "@/components/popup-transition";
-import { RunInspector } from "@/components/run-inspector";
-import { lambdaEstimate } from "@/lib/aws-cost";
+import { RunInspector } from "@/features/monitoring/components/run-inspector";
+import { lambdaEstimate } from "@/features/monitoring/lib/aws-cost";
 export function AwsInvocation({row,saved,onClose}:{row:ReportRow;saved:boolean;onClose:()=>void}){
  const [files,setFiles]=useState<{name:string;events:LogEvent[]}[]>([]),[busy,setBusy]=useState(saved),[error,setError]=useState(''),[tab,setTab]=useState('summary'),[run,setRun]=useState<string|null>(null);
- useEffect(()=>{if(!saved)return;const c=new AbortController();fetch('/api/aws-snapshot?requestId='+encodeURIComponent(row.requestId),{signal:c.signal}).then(async r=>{if(!r.ok)throw Error('Unable to load invocation logs');return r.json();}).then(d=>setFiles(d.files)).catch(e=>{if(!c.signal.aborted)setError(e.message);}).finally(()=>{if(!c.signal.aborted)setBusy(false);});return()=>c.abort();},[row.requestId,saved]);
+ useEffect(()=>{if(!saved)return;const c=new AbortController();fetch('/api/monitoring/aws-snapshot?requestId='+encodeURIComponent(row.requestId),{signal:c.signal}).then(async r=>{if(!r.ok)throw Error('Unable to load invocation logs');return r.json();}).then(d=>setFiles(d.files)).catch(e=>{if(!c.signal.aborted)setError(e.message);}).finally(()=>{if(!c.signal.aborted)setBusy(false);});return()=>c.abort();},[row.requestId,saved]);
  const events=files.flatMap(f=>f.events),text=events.map(e=>e.message).join('\n');
  const runIds=[...new Set([...text.matchAll(/"run_id"\s*:\s*"([\w-]+)"/g)].map(m=>m[1]))];
  const gb=row.billedMs/1000*row.memoryMb/1024;

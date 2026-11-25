@@ -1,5 +1,5 @@
 ﻿"use client";
-import type { DashboardData } from "@/lib/dashboard";
+import type { DashboardData } from "@/features/monitoring/server/dashboard";
 import { Card } from "@/components/ui/card";
 
 function StageStatus({status}: {status: string}) {

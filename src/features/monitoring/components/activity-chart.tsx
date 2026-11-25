@@ -1,5 +1,5 @@
 ﻿"use client";
-import type { DashboardData } from "@/lib/dashboard";
+import type { DashboardData } from "@/features/monitoring/server/dashboard";
 import { InfoTip } from "@/components/info-tip";
 export function ActivityChart({data}:{data:DashboardData}){
  const points=data.timeline;

@@ -1,30 +1,31 @@
 "use client";
-import {selectSnapshotDate} from "@/lib/report-selection";
+import {selectSnapshotDate} from "@/features/monitoring/lib/report-selection";
 import { flushSync } from "react-dom";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Moon, Sun, ShieldCheck, Clock3, Lock, Download, Loader2 } from "lucide-react";
-import { pipelineSource, type PipelineSource } from "@/lib/pipeline-source";
-import type { DashboardData } from "@/lib/dashboard";
+import { pipelineSource, type PipelineSource } from "@/features/monitoring/lib/pipeline-source";
+import type { DashboardData } from "@/features/monitoring/server/dashboard";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Pagination } from "@/components/ui/pagination";
-import { DashboardLoading } from "@/components/dashboard-loading";
+import { DashboardLoading } from "@/features/monitoring/components/dashboard-loading";
 import { DashboardSelect } from "@/components/dashboard-select";
-import { AwsEstimates } from "@/components/aws-estimates";
-import { FargateEstimates } from "@/components/fargate-estimates";
+import { AwsEstimates } from "@/features/monitoring/components/aws-estimates";
+import { FargateEstimates } from "@/features/monitoring/components/fargate-estimates";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { InfoTip } from "@/components/info-tip";
 import Image from "next/image";
-import { RunSearch } from "@/components/run-search";
-import { jobStatus } from "@/lib/pipeline-source";
-import { StagingBrowser } from "@/components/staging-browser";
-import { RunInspector } from "@/components/run-inspector";
-import { ActivityStatus } from "@/components/activity-status";
-import { CostChart } from "@/components/activity-chart";
-import { AccountMenu } from "@/components/account-menu";
-import { JobComparison } from "@/components/job-comparison";
-import { DateOverview } from "@/components/date-overview";
+import {WorkspaceHeader} from "@/components/layout/workspace-header";
+import { RunSearch } from "@/features/monitoring/components/run-search";
+import { jobStatus } from "@/features/monitoring/lib/pipeline-source";
+import { StagingBrowser } from "@/features/monitoring/components/staging-browser";
+import { RunInspector } from "@/features/monitoring/components/run-inspector";
+import { ActivityStatus } from "@/features/monitoring/components/activity-status";
+import { CostChart } from "@/features/monitoring/components/activity-chart";
+import { AccountMenu } from "@/components/layout/account-menu";
+import { JobComparison } from "@/features/monitoring/components/job-comparison";
+import { DateOverview } from "@/features/monitoring/components/date-overview";
 import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -67,7 +68,7 @@ function PipelineDashboard({ source, onSourceChange,username }: { username:strin
   useEffect(()=>{
     if(!apiOutcome||!data?.job)return;
     const request=new AbortController();queueMicrotask(()=>{setApiLoading(true);setApiError('');setApiCalls([]);});
-    fetch('/api/api-calls?'+new URLSearchParams({source,job:data.job._id,date:data.date,outcome:apiOutcome}),{signal:request.signal,cache:'no-store'}).then(async r=>{const value=await r.json();if(!r.ok)throw Error(value.error||'Unable to load API calls');return value.calls;}).then(calls=>{if(!request.signal.aborted)setApiCalls(calls);}).catch(e=>{if(!request.signal.aborted)setApiError(e.message);}).finally(()=>{if(!request.signal.aborted)setApiLoading(false);});
+    fetch('/api/monitoring/api-calls?'+new URLSearchParams({source,job:data.job._id,date:data.date,outcome:apiOutcome}),{signal:request.signal,cache:'no-store'}).then(async r=>{const value=await r.json();if(!r.ok)throw Error(value.error||'Unable to load API calls');return value.calls;}).then(calls=>{if(!request.signal.aborted)setApiCalls(calls);}).catch(e=>{if(!request.signal.aborted)setApiError(e.message);}).finally(()=>{if(!request.signal.aborted)setApiLoading(false);});
     return()=>request.abort();
   },[apiOutcome,source,data?.job,data?.date]);
   const currentData=useRef<DashboardData|null>(null);
@@ -86,13 +87,13 @@ function PipelineDashboard({ source, onSourceChange,username }: { username:strin
       const sameJob=previous&&previous.source===source&&previous.job?._id===filters.job;
       const cached=(sameJob?selectSnapshotDate(previous,filters.date):null)||completedSnapshots.get(snapshotKey(source,filters));
       const reusable=!fresh&&cached&&Date.now()-Date.parse(cached.cache?.savedAt||cached.refreshedAt)<(cached.cache?.ttlSeconds||60)*1000;
-      const response = reusable?null:await fetch("/api/dashboard?"+new URLSearchParams({...filters,source,...(fresh?{refresh:"1"}:{})}),{signal:request.signal,cache:"no-store"});
+      const response = reusable?null:await fetch("/api/monitoring/dashboard?"+new URLSearchParams({...filters,source,...(fresh?{refresh:"1"}:{})}),{signal:request.signal,cache:"no-store"});
       const result = reusable?cached:await response!.json();
       if (response && !response.ok) throw new Error(result.error || "Unable to load data.");
       if (request.signal.aborted) return;
       currentData.current=result;setData(result);
       if(result.job?._id===result.lastJob?._id)setLatestData(result);
-      if((reusable&&background)||result.job?._id!==result.lastJob?._id){void fetch("/api/dashboard?view=live&source="+source,{signal:request.signal,cache:"no-store"}).then(async r=>{if(r.ok){const snapshot=await r.json();if(!request.signal.aborted)setLatestData(snapshot);}}).catch(()=>{});}
+      if(!background&&result.job?._id!==result.lastJob?._id){void fetch("/api/monitoring/dashboard?view=live&source="+source,{signal:request.signal,cache:"no-store"}).then(async r=>{if(r.ok){const snapshot=await r.json();if(!request.signal.aborted)setLatestData(snapshot);}}).catch(()=>{});}
       const normalized = {...filters,page:String(result.page),job:result.job?._id || "",date:result.date,finished:result.finished};
       rememberedFilters.set(source,normalized);
       if(result.activity.state==='completed'&&result.job){completedSnapshots.set(snapshotKey(source,normalized),result);if(filters.job)completedSnapshots.set(snapshotKey(source,filters),result);}
@@ -111,9 +112,24 @@ function PipelineDashboard({ source, onSourceChange,username }: { username:strin
       setDark(saved === "dark");document.documentElement.classList.toggle("dark",saved === "dark");
       void load(rememberedFilters.get(source)||initial);
     });
-    const timer = setInterval(()=>void load(currentFilters.current,true),120_000);
-    return ()=>{clearInterval(timer);cancelAnimationFrame(frame);controller.current?.abort();if(tabTimer.current)clearTimeout(tabTimer.current);};
+
+    return ()=>{cancelAnimationFrame(frame);controller.current?.abort();if(tabTimer.current)clearTimeout(tabTimer.current);};
   },[load,source]);
+  const selectedIsLive=!!data&&["fetching","embedding","attention"].includes(data.activity.state);
+  const latestIsLive=!!latestData&&["fetching","embedding","attention"].includes(latestData.activity.state);
+  useEffect(()=>{
+    if(!selectedIsLive&&!latestIsLive)return;
+    const request=new AbortController();let loading=false;
+    const timer=setInterval(()=>{
+      if(selectedIsLive){void load(currentFilters.current,true);return;}
+      if(loading)return;loading=true;
+      // A completed selection stays cached; only update the known live job.
+      void fetch('/api/monitoring/dashboard?view=live&source='+source,{signal:request.signal,cache:'no-store'})
+        .then(async response=>{if(response.ok){const snapshot=await response.json();if(!request.signal.aborted)setLatestData(snapshot);}})
+        .catch(()=>{}).finally(()=>{loading=false;});
+    },120_000);
+    return()=>{clearInterval(timer);request.abort();};
+  },[selectedIsLive,latestIsLive,source,load]);
   function theme(event:React.MouseEvent<HTMLButtonElement>) {
     const root=document.documentElement;
     if(root.classList.contains('theme-reveal')||root.classList.contains('theme-fade'))return;
@@ -160,7 +176,7 @@ function PipelineDashboard({ source, onSourceChange,username }: { username:strin
 
     <div className="dash-workspace">
       <header className="pipeline-header">
-      <div className="dash-header"><div className="flex items-center gap-3"><span className="cloudbreakr-symbol" aria-hidden="true"><Image src="/brand/cloudbreakr-symbol.png" alt="" width={192} height={192} priority/></span><strong className="cloudbreakr-title">Cloudbreakr</strong></div><div className="flex items-center gap-3"><ActivityStatus source={source} data={latestData} error={error}/><AccountMenu username={username}/><Button variant="ghost" size="icon" onClick={theme} aria-label={dark?"Switch to light mode":"Switch to dark mode"}>{dark?<Sun/>:<Moon/>}</Button></div></div>
+      <WorkspaceHeader><ActivityStatus source={source} data={latestData} error={error}/><AccountMenu username={username}/><Button variant="ghost" size="icon" onClick={theme} aria-label={dark?"Switch to light mode":"Switch to dark mode"}>{dark?<Sun/>:<Moon/>}</Button></WorkspaceHeader>
       <section className="dash-heading"><div><div className="title-line"><div className="pipeline-identity"><Image className="instagram-outline" src="/brand/instagram-outline.svg" alt="Instagram" width={36} height={36}/><h1>{source==="manual"?"IG Post Pipeline Manual":"IG Post Pipeline Automation"}</h1></div><div className="pipeline-controls" hidden={tab==="comparison"}><div className="pipeline-select"><DashboardSelect label="Pipeline source" value={source} onChange={value=>{const selected=pipelineSource(value);if(selected)onSourceChange(selected);}} options={[{value:"lambda",label:"Lambda"},{value:"fargate",label:"Fargate"},{value:"manual",label:"Manual"}]}/></div><div className="region-select"><DashboardSelect label="Pipeline region" value="hk" onChange={()=>{}} options={[{value:"hk",label:"Hong Kong",icon:"/brand/hong-kong.svg"},{value:"my",label:"Malaysia (soon)",icon:"/brand/malaysia.svg",disabled:true},{value:"sg",label:"Singapore (soon)",icon:"/brand/singapore.svg",disabled:true}]}/></div></div></div></div><div className="last-run" data-state={error ? undefined : data?.activity.state}><Clock3 size={16}/><div><span>Job started</span><strong>{time(job?.created_at)}</strong></div><Badge variant="outline">{error?"Status unavailable":data?jobStatus(data.activity.state):"Checking status"}</Badge></div></section>
       </header>
       {!["activity","demo","comparison"].includes(tab)&&<form className="dash-filters" onSubmit={e=>{e.preventDefault();void load({...draft,page:"1"});}}>

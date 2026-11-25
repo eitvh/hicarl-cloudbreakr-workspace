@@ -1,6 +1,6 @@
 "use client";
-import { jobStatus } from "@/lib/pipeline-source";
-import type { DashboardData } from "@/lib/dashboard";
+import { jobStatus } from "@/features/monitoring/lib/pipeline-source";
+import type { DashboardData } from "@/features/monitoring/server/dashboard";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 

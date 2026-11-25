@@ -144,3 +144,19 @@ Comparison starts with two job columns and a shared metric column. Each column s
 Comparison metrics are grouped into Posts, Embedding, Extraction, Costs and Efficiency. Post totals are recorded events except Unique processed, which is distinct per activity day. API outcomes count attempts, including retries. Operation token and cost figures come from usage records for the selected job/date. The observed activity span is the first-to-last event interval, including idle gaps. Total estimates are labeled partial; no AWS cost is invented for manual runs.
 
 Staging uses the authenticated `/api/staging` endpoint independently of dashboard summaries, with four records per page and Previous/Next navigation (no expensive full joined count). The first request builds a job-scoped post/day membership list from usage in one aggregation. A bounded, compressed in-memory cache shares this list across dates/pages; cached post pages use Next.js Data Cache. A new server instance may rebuild the membership list. Current staging captions/statuses are not historical states. API detail dialogs load through `/api/api-calls` only when opened.
+
+## Cloudbreakr Workspace
+
+The repository now contains one Next.js workspace. `/` redirects to `/monitoring`. The module menu reserves Influencer search and Post search as Coming soon; they do not fetch data.
+
+- `src/features/monitoring/components`: monitoring UI.
+- `src/features/monitoring/server`: MongoDB queries and snapshot caching.
+- `src/features/monitoring/lib`: report transformations, pipeline types, and cost helpers.
+- `src/components/layout`: shared workspace header and account menu.
+- `src/components/ui`: shared shadcn components.
+- `src/lib`: shared authentication and diagnostics.
+- `src/app/api/monitoring`: monitoring API routes. Old API paths remain compatibility aliases.
+
+Keep the existing root `.env` or `.env.local` and Vercel environment variables. Variable names, read-only database access, and cache lifetimes are unchanged. Do not commit secrets. Future modules can use their own prefixed variables in this same environment configuration.
+
+The package name is `cloudbreakr-workspace`. The local folder, GitHub repository, and Vercel project have not been renamed; change those separately after validating the migration.

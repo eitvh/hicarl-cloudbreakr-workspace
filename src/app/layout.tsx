@@ -16,8 +16,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "IG Post Automation Monitoring",
-  description: "Instagram post automation monitoring for AWS Lambda and Fargate.",
+  title: {default:"Cloudbreakr Workspace",template:"%s | Cloudbreakr Workspace"},
+  description: "Work tools for pipeline monitoring, influencer discovery, and post search.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

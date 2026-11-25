@@ -1,7 +1,7 @@
 ﻿"use client";
-import type { DashboardData } from "@/lib/dashboard";
-import type { ReportRow } from "@/lib/log-report";
-import { lambdaEstimate,queueEstimate,schedulerEstimate } from "@/lib/aws-cost";
+import type { DashboardData } from "@/features/monitoring/server/dashboard";
+import type { ReportRow } from "@/features/monitoring/lib/log-report";
+import { lambdaEstimate,queueEstimate,schedulerEstimate } from "@/features/monitoring/lib/aws-cost";
 import { InfoTip } from "@/components/info-tip";
 const money=(n:number)=>'$'+n.toFixed(6);
 export function AwsUsageEstimate({rows,data,custom}:{rows:ReportRow[];data:DashboardData;custom:boolean}){

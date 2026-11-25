@@ -1,7 +1,7 @@
 ﻿import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {buildActivityReport,mergeDailyGroups,selectSnapshotDate,type DailyGroup} from '../src/lib/report-selection.ts';
-import type {DashboardData} from '../src/lib/dashboard.ts';
+import {buildActivityReport,mergeDailyGroups,selectSnapshotDate,type DailyGroup} from '../src/features/monitoring/lib/report-selection.ts';
+import type {DashboardData} from '../src/features/monitoring/server/dashboard.ts';
 const totals={count:1,input_tokens:10,output_tokens:0,estimated_usd:0.1,unknown_cost_calls:0};
 const rows:DailyGroup[]=[
  {_id:{key:{run_id:'r1',type:'post_count',metric:'published'},day:'2026-11-21'},...totals,count:5},
