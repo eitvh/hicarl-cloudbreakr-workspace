@@ -1,0 +1,21 @@
+"use client";
+import {createContext,useContext,useEffect,useState} from 'react';
+import {usePathname} from 'next/navigation';
+import Link from 'next/link';
+import Image from 'next/image';
+import {BookOpen, Bookmark, NotebookPen, X, ChevronRight, Workflow, ContactRound, ScanSearch} from 'lucide-react';
+import {Sheet,SheetContent,SheetTitle,SheetDescription,SheetClose} from '@/components/ui/sheet';
+import {Button} from '@/components/ui/button';
+import {AccountMenu} from './account-menu';
+import {AppearanceControl} from './appearance-control';
+import {ModulePreview} from './module-preview';
+import {LibraryPreview} from './library-preview';
+const NavigationContext=createContext<()=>void>(()=>{});
+export function WorkspaceMenuButton(){const open=useContext(NavigationContext);return <Button variant="outline" className="workspace-menu-button" aria-label="Open workspace navigation" onClick={open}><span>Menu</span><span className="workspace-menu-lines" aria-hidden="true"><i/><i/></span></Button>;}
+export function WorkspaceShell({children,username}:{children:React.ReactNode;username:string}){
+ const path=usePathname();const [open,setOpen]=useState(false);
+ const [preview,setPreview]=useState(0);
+ useEffect(()=>{const frame=requestAnimationFrame(()=>{try{document.documentElement.classList.toggle('dark',localStorage.getItem('monitor-theme')!=='light');}catch{}});return()=>cancelAnimationFrame(frame);},[]);
+ if(path==='/login')return children;
+ return <NavigationContext.Provider value={()=>setOpen(true)}><div className="work-layout"><div className="work-content">{children}</div></div><Sheet open={open} onOpenChange={setOpen}><SheetContent side="left" showCloseButton={false} className="workspace-flyout"><div className="flyout-links"><header><SheetClose render={<Button variant="outline" size="icon" aria-label="Close navigation"/>}><X size={17}/></SheetClose><div className="flyout-brand"><Image src="/brand/cloudbreakr-symbol.png" width={28} height={28} alt=""/><span>Cloudbreakr</span></div></header><SheetTitle className="sr-only">Workspace navigation</SheetTitle><SheetDescription className="sr-only">Switch workspace modules. Influencer search and Post search are coming soon.</SheetDescription><nav aria-label="Workspace modules">{[{title:'Monitoring',Icon:Workflow,href:'/monitoring'},{title:'Influencer search',Icon:ContactRound},{title:'Post search',Icon:ScanSearch}].map(({title,Icon,href},index)=>{const content=<><span className="module-symbol" data-module={index}><Icon size={21} strokeWidth={1.6}/></span><span className="module-label"><span className="module-title-line">{title}{index===0&&<span className="module-new-pill">New</span>}</span>{!href&&<small>Coming soon</small>}</span><span className="flyout-chevron"><ChevronRight size={16}/></span></>;const events={'data-module-target':index,onMouseEnter:()=>setPreview(index),onFocus:()=>setPreview(index)};return href?<Link key={title} {...events} href={href} onClick={()=>setOpen(false)} aria-current={path.startsWith(href)?'page':undefined}>{content}</Link>:<button key={title} {...events} type="button" aria-disabled="true">{content}</button>;})}</nav><div className="flyout-secondary"><span>Library</span><div><Link href="/notes" onMouseEnter={()=>setPreview(3)} onFocus={()=>setPreview(3)} onClick={()=>setOpen(false)} data-library-target="0" data-preview-active={preview===3}><NotebookPen size={17}/><span>Notes<small>Your scratchpad</small></span></Link><button type="button" className="library-saved" aria-disabled="true" onMouseEnter={()=>setPreview(4)} onFocus={()=>setPreview(4)} data-library-target="1" data-preview-active={preview===4} title="Coming soon: saved comparisons and bookmarks"><Bookmark size={17}/><span>Saved items<small>Your bookmarks</small></span><span className="library-soon">Soon</span></button><Link href="/documentation" onMouseEnter={()=>setPreview(5)} onFocus={()=>setPreview(5)} onClick={()=>setOpen(false)} data-library-target="2" data-preview-active={preview===5}><BookOpen size={17}/><span>Documentation<small>Guides &amp; reference</small></span></Link></div></div><footer><AppearanceControl/><AccountMenu username={username}/></footer></div>{preview<3?<ModulePreview key={preview} active={preview}/>:<LibraryPreview key={preview} active={preview-3}/>}</SheetContent></Sheet></NavigationContext.Provider>;
+}

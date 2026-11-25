@@ -1,32 +1,130 @@
-﻿import { ChevronLeft, ChevronRight, MoreHorizontal } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import * as React from "react"
+import { cn } from "cn"
 
-type PaginationProps = {
-  label: string;
-  page: number;
-  pages: number;
-  onPage: (page: number) => void;
-};
+import { Button } from "@/components/ui/button"
+import { ChevronLeftIcon, ChevronRightIcon, MoreHorizontalIcon } from "lucide-react"
 
-export function Pagination({label,page,pages,onPage}: PaginationProps) {
-  const last = Math.max(1,pages);
-  const visible = [...new Set([1,page-1,page,page+1,last])]
-    .filter(n=>n>=1 && n<=last).sort((a,b)=>a-b);
+function Pagination({ className, ...props }: React.ComponentProps<"nav">) {
+  return (
+    <nav
+      role="navigation"
+      aria-label="pagination"
+      data-slot="pagination"
+      className={cn("mx-auto flex w-full justify-center", className)}
+      {...props}
+    />
+  )
+}
 
-  return <nav data-slot="pagination" aria-label={label+" pagination"} className="table-pagination">
-    <Button type="button" variant="ghost" size="sm" disabled={page<=1} onClick={()=>onPage(page-1)}>
-      <ChevronLeft aria-hidden="true"/>Previous
-    </Button>
-    <ul data-slot="pagination-content" className="pagination-pages">
-      {visible.map((n,i)=><li key={n} data-slot="pagination-item">
-        {i>0 && n-visible[i-1]>1 && <MoreHorizontal size={14} aria-hidden="true"/>}
-        <Button type="button" variant={n===page?"outline":"ghost"} size="sm" aria-label={"Page "+n}
-          aria-current={n===page?"page":undefined} onClick={()=>{if(n!==page)onPage(n);}}>{n.toLocaleString()}</Button>
-      </li>)}
-    </ul>
-    <span className="pagination-compact">Page {page.toLocaleString()} of {last.toLocaleString()}</span>
-    <Button type="button" variant="ghost" size="sm" disabled={page>=last} onClick={()=>onPage(page+1)}>
-      Next<ChevronRight aria-hidden="true"/>
-    </Button>
-  </nav>;
+function PaginationContent({
+  className,
+  ...props
+}: React.ComponentProps<"ul">) {
+  return (
+    <ul
+      data-slot="pagination-content"
+      className={cn("flex items-center gap-0.5", className)}
+      {...props}
+    />
+  )
+}
+
+function PaginationItem({ ...props }: React.ComponentProps<"li">) {
+  return <li data-slot="pagination-item" {...props} />
+}
+
+type PaginationLinkProps = {
+  isActive?: boolean
+} & Pick<React.ComponentProps<typeof Button>, "size"> &
+  React.ComponentProps<"a">
+
+function PaginationLink({
+  className,
+  isActive,
+  size = "icon",
+  ...props
+}: PaginationLinkProps) {
+  return (
+    <Button
+      variant={isActive ? "outline" : "ghost"}
+      size={size}
+      className={cn(className)}
+      nativeButton={false}
+      render={
+        <a
+          aria-current={isActive ? "page" : undefined}
+          data-slot="pagination-link"
+          data-active={isActive}
+          {...props}
+        />
+      }
+    />
+  )
+}
+
+function PaginationPrevious({
+  className,
+  text = "Previous",
+  ...props
+}: React.ComponentProps<typeof PaginationLink> & { text?: string }) {
+  return (
+    <PaginationLink
+      aria-label="Go to previous page"
+      size="default"
+      className={cn("pl-1.5!", className)}
+      {...props}
+    >
+      <ChevronLeftIcon data-icon="inline-start" />
+      <span className="hidden sm:block">{text}</span>
+    </PaginationLink>
+  )
+}
+
+function PaginationNext({
+  className,
+  text = "Next",
+  ...props
+}: React.ComponentProps<typeof PaginationLink> & { text?: string }) {
+  return (
+    <PaginationLink
+      aria-label="Go to next page"
+      size="default"
+      className={cn("pr-1.5!", className)}
+      {...props}
+    >
+      <span className="hidden sm:block">{text}</span>
+      <ChevronRightIcon data-icon="inline-end" />
+    </PaginationLink>
+  )
+}
+
+function PaginationEllipsis({
+  className,
+  ...props
+}: React.ComponentProps<"span">) {
+  return (
+    <span
+      aria-hidden
+      data-slot="pagination-ellipsis"
+      className={cn(
+        "flex size-8 items-center justify-center [&_svg:not([class*='size-'])]:size-4",
+        className
+      )}
+      {...props}
+    >
+      <MoreHorizontalIcon
+      />
+      <span className="sr-only">More pages</span>
+    </span>
+  )
+}
+
+export {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
 }

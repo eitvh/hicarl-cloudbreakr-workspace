@@ -1,5 +1,6 @@
 "use client";
-import { ChevronRight } from "lucide-react";
+import { Pagination } from "@/components/table-pagination";
+import { ChevronRight, Loader2 } from "lucide-react";
 import { stageLabel, sourceLabel, type PipelineSource } from "@/features/monitoring/lib/pipeline-source";
 import { useRef,useEffect,useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -24,7 +25,7 @@ export function RunSearch({source,onSelect}:{source:PipelineSource;onSelect:(id:
   const request=new AbortController();controller.current=request;setBusy(true);
   try{const r=await fetch("/api/monitoring/investigate?"+new URLSearchParams({source,kind,q:q.trim()}),{signal:request.signal,cache:"no-store"});const d=await r.json();if(!r.ok)throw Error(d.error);setRows(d.runs);setMessage(d.note+(d.limited?" Limited to 100 posts/runs. Search a specific post to narrow results.":"")+(d.runs.length?"":" No matching runs found."));}catch(e){if(!request.signal.aborted)setMessage(e instanceof Error?e.message:"Search failed.");}finally{if(!request.signal.aborted)setBusy(false);}
  }
- return <div className="investigation-search"><form className="run-search" onSubmit={e=>{e.preventDefault();void search();}}><DashboardSelect label="Search identifier type" value={kind} onChange={v=>{setKind(v);setRows([]);setMessage("");}} options={[{value:"run",label:"Run UUID"},{value:"post",label:"Post ID"},{value:"user",label:"User ID"}]}/><Input aria-label="Investigation identifier" placeholder={kind==="run"?"Paste full run UUID":"Enter exact "+kind+" ID"} value={q} onChange={e=>setQ(e.target.value)}/><Button disabled={busy||!q.trim()} type="submit">{busy?"Searching":"Investigate"}</Button></form>{busy?<Skeleton className="h-12"/>:message&&<Dialog open={!!message} onOpenChange={open=>{if(!open)setMessage("");}}><DialogContent className="search-dialog" onBackdropClick={()=>setMessage("")}><DialogHeader className="match-header">
+ return <div className="investigation-search"><form className="run-search" onSubmit={e=>{e.preventDefault();void search();}}><DashboardSelect label="Search identifier type" value={kind} onChange={v=>{setKind(v);setRows([]);setMessage("");}} options={[{value:"run",label:"Run UUID"},{value:"post",label:"Post ID"},{value:"user",label:"User ID"}]}/><Input aria-label="Investigation identifier" placeholder={kind==="run"?"Paste full run UUID":"Enter exact "+kind+" ID"} value={q} onChange={e=>setQ(e.target.value)}/><Button disabled={busy||!q.trim()} aria-busy={busy} type="submit">{busy?<><Loader2 className="animate-spin"/>Searching...</>:"Investigate"}</Button></form>{busy?<Skeleton className="h-12"/>:message&&<Dialog open={!!message} onOpenChange={open=>{if(!open)setMessage("");}}><DialogContent className="search-dialog" onBackdropClick={()=>setMessage("")}><DialogHeader className="match-header">
    <DialogTitle>Matching runs</DialogTitle>
    <DialogDescription className="match-query">
      <span>{sourceLabel(source)}</span><span>{submitted.kind==="user"?"User ID":"Post ID"} <code>{submitted.id}</code></span>
@@ -44,5 +45,5 @@ export function RunSearch({source,onSelect}:{source:PipelineSource;onSelect:(id:
        <ChevronRight size={18} aria-hidden="true"/>
      </button>;
    })}
-   <p className="match-note">{message}</p>{rows.length>2&&<div className="dash-pagination"><Button size="sm" variant="ghost" disabled={page===1} onClick={()=>setPage(page-1)}>Previous</Button><span>{page} / {Math.ceil(rows.length/2)}</span><Button size="sm" variant="ghost" disabled={page*2>=rows.length} onClick={()=>setPage(page+1)}>Next</Button></div>}</div></DialogContent></Dialog>}</div>;
+   <p className="match-note">{message}</p>{rows.length>2&&<Pagination label="Matching runs" page={page} pages={Math.ceil(rows.length/2)} onPage={setPage}/>}</div></DialogContent></Dialog>}</div>;
 }

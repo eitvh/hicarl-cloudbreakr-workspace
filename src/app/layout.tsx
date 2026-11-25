@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono, Manrope } from "next/font/google";
 import "./globals.css";
+import "./workspace.css";
+import {WorkspaceShell} from "@/components/layout/workspace-shell";
 import "./dashboard.css";
 
 const headingFont = Manrope({variable:"--font-heading-display",subsets:["latin"]});
@@ -27,7 +29,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       suppressHydrationWarning
       className={`dark ${geistSans.variable} ${geistMono.variable} ${headingFont.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col"><WorkspaceShell username={process.env.DASHBOARD_USERNAME||"admin"}>{children}</WorkspaceShell></body>
     </html>
   );
 }

@@ -1,0 +1,5 @@
+"use client";
+import {useEffect,useState} from 'react';import {Button} from '@/components/ui/button';
+export function NotesEditor({username}:{username:string}){const [text,setText]=useState(''),[ready,setReady]=useState(false),[status,setStatus]=useState('');const key='workspace-notes:'+username;
+useEffect(()=>{const frame=requestAnimationFrame(()=>{try{setText(localStorage.getItem(key)||'');}catch{setStatus('Browser storage is unavailable. Copy your notes before leaving.');}setReady(true);});return()=>cancelAnimationFrame(frame);},[key]);
+return <div className="notes-editor"><label htmlFor="workspace-notes">Personal notes</label><textarea id="workspace-notes" disabled={!ready} value={text} onChange={e=>{setText(e.target.value);setStatus('Unsaved changes');}} placeholder="Write a reminder, an idea, or a follow-up..."/><div><span role="status">{status}</span><Button disabled={!ready} onClick={()=>{try{localStorage.setItem(key,text);setStatus('Saved in this browser');}catch{setStatus('Could not save. Copy your notes before leaving.');}}}>Save notes</Button></div></div>}

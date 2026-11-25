@@ -1,0 +1,19 @@
+"use client";
+import type {PointerEvent} from 'react';
+import {Activity, ArrowRight, Check, Database, Layers, ScanSearch, SlidersHorizontal, UsersRound} from 'lucide-react';
+const modules=[
+ {name:'Monitoring',title:'See the whole',emphasis:'process.',description:'Follow every stage. Investigate a run. Understand the cost.',footer:'Lambda / Fargate / Manual',Icon:Activity},
+ {name:'Influencer search',title:'Find your',emphasis:'people.',description:'Explore creators through their audience, interests and content.',footer:'Creator discovery',Icon:UsersRound},
+ {name:'Post search',title:'Good content.',emphasis:'Within reach.',description:'Find the posts that matter, with the context to understand them.',footer:'Content discovery',Icon:ScanSearch},
+];
+function MonitoringArtwork(){return <div className="mp-console"><div className="mp-console-top"><span><i/>Pipeline view</span><Activity size={14}/></div><div className="mp-wave"><svg viewBox="0 0 240 74" fill="none"><path className="mp-wave-grid" d="M0 18H240M0 37H240M0 56H240"/><path className="mp-wave-line" d="M0 54L18 54L29 45L39 52L51 22L64 61L77 38L93 38L106 14L119 49L132 33L150 33L164 22L177 47L190 30L205 30L219 13L229 32L240 25"/></svg></div><div className="mp-stage-track">{[{Icon:Database,name:'Fetch'},{Icon:Layers,name:'Enrich'},{Icon:Check,name:'Publish'}].map(({Icon,name},i)=><div key={name}><span><Icon size={17}/></span><small>{name}</small>{i<2&&<i/>}</div>)}</div><div className="mp-console-bottom"><span>Progress</span><span>Usage</span><span>Costs</span></div></div>}
+function CreatorArtwork(){return <div className="mp-creators"><div className="mp-profile-back"/><div className="mp-profile"><div className="mp-portrait"><div className="mp-portrait-head"/><div className="mp-portrait-body"/><span>CREATOR DISCOVERY</span></div><div className="mp-profile-copy"><strong>A new perspective.</strong><div><span>Lifestyle</span><span>Travel</span></div></div></div><div className="mp-audience"><UsersRound size={16}/><span>People.<br/><strong>Not just numbers.</strong></span></div><div className="mp-orbit-dot"/></div>}
+function PostArtwork(){return <div className="mp-posts"><div className="mp-search"><ScanSearch size={15}/><span>Explore by meaning</span><SlidersHorizontal size={14}/></div><div className="mp-mosaic"><div className="mp-tile mp-tile-arch"><i/><span>Places</span></div><div className="mp-tile mp-tile-sun"><i/><span>Stories</span></div><div className="mp-tile mp-tile-lines"><i/><span>Ideas</span></div></div><div className="mp-post-caption"><span>Beyond the keyword.</span><ArrowRight size={15}/></div></div>}
+function moveArtwork(event:PointerEvent<HTMLElement>){
+ if(event.pointerType!=='mouse'||window.matchMedia('(prefers-reduced-motion: reduce)').matches)return;
+ const panel=event.currentTarget;const rect=panel.getBoundingClientRect();
+ panel.style.setProperty('--mp-x',((event.clientX-rect.left)/rect.width-.5)*10+'px');
+ panel.style.setProperty('--mp-y',((event.clientY-rect.top)/rect.height-.5)*8+'px');
+}
+function resetArtwork(event:PointerEvent<HTMLElement>){event.currentTarget.style.setProperty('--mp-x','0px');event.currentTarget.style.setProperty('--mp-y','0px');}
+export function ModulePreview({active}:{active:number}){const m=modules[active];return <aside className="module-preview" onPointerMove={moveArtwork} onPointerLeave={resetArtwork} data-module-preview={active} aria-hidden="true"><div key={active} className="mp-inner"><div className="mp-top"><span><m.Icon size={16}/>{m.name}</span><span className="mp-edition">0{active+1}</span></div><div className="mp-heading"><h2>{m.title}<br/><em>{m.emphasis}</em></h2></div><div className="mp-art">{active===0?<MonitoringArtwork/>:active===1?<CreatorArtwork/>:<PostArtwork/>}</div><div className="mp-bottom"><p>{m.description}</p><div><span>{m.footer}</span>{active>0&&<span className="mp-soon">Coming soon</span>}</div></div></div></aside>}

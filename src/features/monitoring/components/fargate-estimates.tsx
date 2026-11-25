@@ -1,4 +1,5 @@
 "use client";
+import {animatePanelChange} from "@/lib/panel-motion";
 import { useEffect, useRef, useState } from "react";
 import { parseFargateCsv, summarizeFargate, fargateUsage, type FargateEvent } from "@/features/monitoring/lib/fargate-usage";
 import { Card } from "@/components/ui/card";
@@ -6,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
-import { Pagination } from "@/components/ui/pagination";
+import { Pagination } from "@/components/table-pagination";
 type TaskEvidence = {source:string;taskId:string;cpu:number;memory:number;storage:number;pullStartedAt:string;startedAt:string;executionStoppedAt:string;stoppedAt:string;exitCode:number};
 type Snapshot = {taskEvidence?:TaskEvidence;label:string;events:FargateEvent[];files:{name:string;url:string}[]};
 export function FargateEstimates() {
@@ -57,15 +58,15 @@ export function FargateEstimates() {
   const sufficient = !!evidence || (!summary.unidentified && summary.events > 0);
   const money = (value:number) => "$"+value.toFixed(6);
   return <Card className="dash-panel aws-snapshot">
-    <div className="panel-heading"><h2>AWS usage estimate</h2><span className="snapshot-label">{custom ? "Local import" : "Saved job snapshot"} | Partial coverage</span></div>
+    <div className="panel-heading"><span className="snapshot-label">{custom ? "Local import" : "Saved job snapshot"} | Partial coverage</span></div>
     <div className="report-subtitle"><strong>{custom?"Imported logs":snapshot?.label||"Loading snapshot"}</strong><span>{files.length} log files</span><span>CloudWatch evidence</span></div>
     {(loading||snapshotLoading)&&<p role="status">Loading log files...</p>}
     {error&&<p role="alert">{error} {files.length>0&&"Previous calculation remains visible."}</p>}
     <div className="inspector-tabs">
-      <Button variant={tab==="summary"?"secondary":"ghost"} onClick={()=>setTab("summary")}>Usage summary</Button>
-      <Button variant={tab==="cost"?"secondary":"ghost"} onClick={()=>setTab("cost")}>Job cost estimate</Button>
-      <Button variant={tab==="files"?"secondary":"ghost"} onClick={()=>setTab("files")}>Files &amp; downloads</Button>
-      <Button variant={tab==="records"?"secondary":"ghost"} onClick={()=>setTab("records")}>Task records</Button>
+      <Button variant={tab==="summary"?"secondary":"ghost"} onClick={()=>animatePanelChange(()=>setTab("summary"))}>Usage summary</Button>
+      <Button variant={tab==="cost"?"secondary":"ghost"} onClick={()=>animatePanelChange(()=>setTab("cost"))}>Job cost estimate</Button>
+      <Button variant={tab==="files"?"secondary":"ghost"} onClick={()=>animatePanelChange(()=>setTab("files"))}>Files &amp; downloads</Button>
+      <Button variant={tab==="records"?"secondary":"ghost"} onClick={()=>animatePanelChange(()=>setTab("records"))}>Task records</Button>
     </div>
     {tab==="summary"?<>
       <div className="dash-report-stats">
@@ -130,6 +131,6 @@ export function FargateEstimates() {
       </Table></div>
       <Pagination label="Task records" page={page} pages={Math.ceil(summary.tasks.length/4)} onPage={setPage}/>
     </>}
-    <small>Saved exports are included in this project and available behind dashboard authentication. New file imports stay in browser memory.</small>
+    
   </Card>;
 }
