@@ -22,6 +22,15 @@ const countries=[{value:'HK',label:'Hong Kong',icon:'/brand/hong-kong.svg'},{val
 function Status({value}:{value:unknown}){const s=String(value||'');if(!s||s.toLowerCase()==='unknown')return <Badge variant="outline">Status unavailable</Badge>;return <Badge className={s==='completed'?'api-success':s==='failed'?'api-failure':s==='running'?'mysql-running':'api-started'}>{s.replaceAll('_',' ')}</Badge>}
 function Country({value}:{value:unknown}){const c=countries.find(c=>c.value===value);return <span className="mysql-country">{c&&<Image src={c.icon} alt="" width={20} height={14}/>} {c?.label||String(value||'Unknown country')}</span>}
 export function MysqlDashboard(){
+ useEffect(()=>{
+  const monitor=document.querySelector<HTMLElement>('.mysql-monitor');
+  const header=monitor?.querySelector<HTMLElement>('.pipeline-header');
+  if(!monitor||!header)return;
+  const measure=()=>{const inset=parseFloat(getComputedStyle(header).top)||0;monitor.style.setProperty('--monitor-tabs-top',Math.ceil(header.getBoundingClientRect().height+inset+10)+'px');};
+  const observer=new ResizeObserver(measure);observer.observe(header);window.addEventListener('resize',measure);measure();
+  return()=>{observer.disconnect();window.removeEventListener('resize',measure);};
+ },[]);
+
  const [hasSelection,setHasSelection]=useState(false);
  const [inspectOpen,setInspectOpen]=useState(false);
  const [applying,setApplying]=useState(false);const applyTimer=useRef<ReturnType<typeof setTimeout>|null>(null);
