@@ -454,3 +454,31 @@ html .mysql-monitor .mysql-settings-trigger:hover,.docs-download-float:hover{tra
 .mysql-monitor .run-reveal-body{animation:run-results-arrive .55s .07s cubic-bezier(.22,1,.36,1) both}
 @keyframes run-results-arrive{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
 @media(prefers-reduced-motion:reduce){.mysql-monitor .monitor-selection-empty{transition:none}.mysql-monitor .run-reveal-metrics,.mysql-monitor .run-reveal-body{animation:none}.mysql-monitor[data-applying=true] .monitor-selection-empty{transform:none}}
+
+/* Phone layouts: retain complete live stages and keep selection guidance visible. */
+.mysql-live-dialog .mysql-live-body{min-height:0;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
+.mysql-live-dialog .mysql-live-body> *{flex-shrink:0}
+.mysql-live-dialog .live-stage-list{flex-shrink:0;height:auto;max-height:none}
+@media(max-width:650px){
+ [data-slot=dialog-content].mysql-live-dialog{max-height:calc(100dvh - 24px)}
+ .live-refined .live-refined-header{padding:20px 42px 16px 18px;gap:12px}
+ .live-refined .mysql-live-body{padding:16px;gap:16px}
+ .live-stage-list section{padding:13px 11px;min-height:72px}
+ .live-refined-footer{padding:11px 16px}
+ .mysql-monitor .monitor-selection-empty{flex:none;min-height:0;padding:20px 8px 68px;gap:8px;overflow:visible}
+ .monitor-selection-empty h2{order:0;font-size:20px;margin:0}
+ .monitor-selection-empty p{order:1;font-size:13px;line-height:1.6;margin:0;max-width:300px}
+ .monitor-selection-empty .run-selection-art{order:2;flex:none;width:260px;height:185px;margin:14px 0 0;transform:scale(.85);transform-origin:top center;margin-bottom:-26px}
+ .login-editorial .login-brand{width:100%;justify-content:center;text-align:center}
+ .login-editorial .login-story{align-items:center}
+}
+
+/* Mobile login: align appearance controls to the card edge without overlap. */
+@media(max-width:760px){
+ .login-page.login-modern.login-editorial{display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:14px;padding:20px 18px 28px!important;min-height:100dvh;height:auto}
+ .login-editorial .login-theme-toolbar{position:relative;inset:auto;display:flex;justify-content:flex-end;width:100%;max-width:440px;flex:none;z-index:1}
+ .login-editorial .login-shell{width:100%;max-width:440px;flex:none;margin:0}
+ .login-editorial .login-theme-switch{padding:4px;box-shadow:0 2px 8px #0000000d}
+ .login-editorial .login-theme-switch button{width:32px;height:32px}
+ .login-editorial .login-brand{width:100%;justify-content:center;text-align:center}
+}
