@@ -47,7 +47,24 @@ export function MysqlDashboard(){
  useEffect(()=>{const id=setTimeout(()=>void refresh(),0);return()=>clearTimeout(id)},[refresh]);
  const available=rows.filter(r=>r.region_key===region&&r.approach===source);const jobs=[...new Set(available.map(r=>String(r.job_id)))];const selected=jobs.includes(job)?job:'';const selectedDraft=jobs.includes(draftJob)?draftJob:'';const all=available.filter(r=>r.job_id===selected);const visible=all.filter(r=>(attempt==='all'||String(r.attempt_no)===attempt)&&(startDate==='all'||startedDay(r.started_at,zone)===startDate));const draftRuns=available.filter(r=>r.job_id===selectedDraft);const startDates=[...new Set(available.map(r=>startedDay(r.started_at,zone)).filter(Boolean))].sort().reverse();const sum=(k:string)=>visible.reduce((s,r)=>s+num(r,k),0);const latest=all[0];const headerAttempt=visible.reduce<Run|undefined>((current,r)=>!current||num(r,'attempt_no')>num(current,'attempt_no')?r:current,undefined);const live=rows.find(r=>(r.approach==='manual'||r.approach==='lambda')&&r.status==='running'&&!r.finished_at);const polling=rows.some(r=>r.status==='running'&&!r.finished_at);
  const [refreshSeconds,setRefreshSeconds]=useState(300);
- useEffect(()=>{if(!polling)return;const deadline=Date.now()+300000;setRefreshSeconds(300);const ticker=setInterval(()=>setRefreshSeconds(Math.max(0,Math.ceil((deadline-Date.now())/1000))),1000);const timer=setTimeout(()=>void refresh(),300000);return()=>{clearInterval(ticker);clearTimeout(timer)}},[polling,refresh,rows]);
+ useEffect(()=>{
+  if(!polling)return;
+  const interval=300000;
+  let deadline=(Math.floor(Date.now()/interval)+1)*interval;
+  const tick=()=>{
+   const now=Date.now();
+   if(now>=deadline){
+    deadline=(Math.floor(now/interval)+1)*interval;
+    void refresh();
+   }
+   setRefreshSeconds(Math.max(0,Math.ceil((deadline-now)/1000)));
+  };
+  tick();
+  const ticker=setInterval(tick,1000);
+  const onVisible=()=>{if(document.visibilityState==='visible')tick()};
+  document.addEventListener('visibilitychange',onVisible);
+  return()=>{clearInterval(ticker);document.removeEventListener('visibilitychange',onVisible)};
+ },[polling,refresh]);
  function reset(){setHasSelection(false);setStartDate('all');setDraftStartDate('');setJob('');setDraftJob('');setAttempt('all');setDraftAttempt('');setPage(1)}
  const stages=[{label:'Fetch posts',Icon:Database,key:'posts_synced',details:[['Attempts',visible.length]]},{label:'Embeddings',Icon:Layers,key:'embeddings_completed',details:[['Skipped',sum('embeddings_skipped')],['Failed',sum('embeddings_failed')],['Reused',sum('embeddings_reused')]]},{label:'Extraction',Icon:ScanText,key:'extractions_completed',details:[['Attempted',sum('extractions_attempted')],['Failed',sum('extractions_failed')]]},{label:'Published',Icon:Send,key:'posts_published',details:[]}];
  const cost=sum('embedding_estimated_cost_usd')+sum('extraction_estimated_cost_usd');const hasExtraction=all.some(r=>num(r,'extractions_attempted')||num(r,'extraction_api_calls'));const pages=Math.max(1,Math.ceil(visible.length/4));const shownPage=Math.min(page,pages);

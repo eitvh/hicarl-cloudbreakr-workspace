@@ -517,3 +517,8 @@ html .mysql-monitor .mysql-settings-trigger:hover,.docs-download-float:hover{tra
  .docs-guide .docs-layout{animation:reading-arrive .5s var(--motion-settle) both}
  .docs-guide .docs-hero,.docs-guide .docs-navigation{animation:none}
 }
+
+
+/* Match Monitoring to the existing soft light-theme module tiles. */
+html:not(.dark) .workspace-flyout .module-symbol[data-module="0"]{background:#f2e8f5;color:#994baa;border-color:#dcc1e4}
+html:not(.dark) .workspace-flyout .module-symbol[data-module="0"] svg{filter:none}
