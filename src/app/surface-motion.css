@@ -503,3 +503,17 @@ html .mysql-monitor .mysql-settings-trigger:hover,.docs-download-float:hover{tra
 .workspace-flyout .flyout-links footer .account-name small{color:var(--muted-foreground);font-size:10px;line-height:1.3}
 .workspace-flyout .flyout-links footer .account-name strong{color:var(--foreground);font-size:12px;line-height:1.3}
 .workspace-flyout .flyout-links footer .account-menu-trigger > svg{flex-shrink:0}
+
+.mysql-date-filters > label{min-width:0}
+.mysql-date-filters [data-slot=select-trigger]{width:100%;min-width:0;max-width:100%;overflow:hidden}
+.mysql-date-filters [data-slot=select-value]{flex:1;min-width:0;overflow:hidden}
+.mysql-date-filters .select-selection-motion{display:flex;min-width:0;max-width:100%;gap:8px}
+.mysql-date-filters .select-selection-motion > span:first-of-type{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mysql-date-filters .select-live-pill{flex-shrink:0}
+.live-refresh-line{font-variant-numeric:tabular-nums}
+
+/* Animate the complete guide content once, like the Notes workspace. */
+@media screen and (prefers-reduced-motion:no-preference){
+ .docs-guide .docs-layout{animation:reading-arrive .5s var(--motion-settle) both}
+ .docs-guide .docs-hero,.docs-guide .docs-navigation{animation:none}
+}
