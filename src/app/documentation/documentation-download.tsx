@@ -1,0 +1,11 @@
+﻿"use client";
+import {useState} from 'react';
+import {Download,Check,Share2,Copy,Link2,FileText} from 'lucide-react';
+import {Button} from '@/components/ui/button';
+import {Dialog,DialogContent,DialogTitle,DialogDescription,DialogHeader} from '@/components/ui/dialog';
+export function DocumentationDownload(){
+ const [open,setOpen]=useState(false),[url,setUrl]=useState(''),[copied,setCopied]=useState(false),[error,setError]=useState('');
+ function share(){const active=document.querySelector('.docs-navigation a[aria-current]')?.getAttribute('href')||location.hash;setUrl(location.origin+location.pathname+active);setCopied(false);setError('');setOpen(true);}
+ async function copy(){try{await navigator.clipboard.writeText(url);setCopied(true);setError('');}catch{setError('Select the link below and copy it.');}}
+ return <><div className="docs-action-dock"><div className="docs-action-buttons docs-tools-refined"><Button variant="ghost" onClick={()=>window.print()} title="Save as PDF using your browser’s print dialog" aria-label="Save documentation as PDF"><span className="docs-tool-icon"><Download size={18}/></span><span>Save PDF</span></Button><span className="docs-action-divider"/><Button variant="ghost" onClick={share} title="Copy a link to this section"><span className="docs-tool-icon"><Share2 size={18}/></span><span>Share</span></Button></div></div><Dialog open={open} onOpenChange={setOpen}><DialogContent className="docs-share-dialog"><DialogHeader className="docs-share-art-header"><span className="docs-share-symbol"><Link2 size={22}/></span><DialogTitle>Share documentation</DialogTitle><DialogDescription>Copy a link to this section. No sign-in required.</DialogDescription></DialogHeader><div className="docs-share-content"><div className="docs-share-preview"><FileText size={22}/><div><strong>Instagram Post Monitoring</strong><span>Cloudbreakr documentation</span></div></div><label htmlFor="docs-share-link">Section link</label><div className="docs-share-field"><input id="docs-share-link" value={url} readOnly onFocus={e=>e.target.select()}/><Button onClick={()=>void copy()}>{copied?<Check size={16}/>:<Copy size={16}/>} {copied?'Copied':'Copy'}</Button></div><p role="status" className="docs-share-status">{error||(copied?'Link copied to clipboard.':'')}</p></div></DialogContent></Dialog></>;
+}

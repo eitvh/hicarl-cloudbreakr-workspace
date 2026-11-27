@@ -1,17 +1,17 @@
 /* Shared by the dashboard, sign-in screen and portalled controls. */
 :root {
-  --background: #e9edf5;
-  --foreground: #1e293b;
-  --card: #f8faff;
-  --popover: #f8faff;
-  --muted: #e3e9f4;
-  --muted-foreground: #526079;
-  --border: #cbd5e5;
-  --input: #b6c4dc;
-  --primary: #4355c5;
+  --background: #f5f5f7;
+  --foreground: #1d1d1f;
+  --card: #ffffff;
+  --popover: #ffffff;
+  --muted: #eaeaed;
+  --muted-foreground: #68686e;
+  --border: #dcdce0;
+  --input: #c5c5cb;
+  --primary: #0071e3;
   --primary-foreground: #ffffff;
-  --accent: #dfe5fc;
-  --accent-foreground: #303f94;
+  --accent: #e7f1fc;
+  --accent-foreground: #005bb5;
   --ring: var(--primary);
   --secondary: var(--muted);
   --secondary-foreground: var(--foreground);
@@ -27,18 +27,18 @@
   --sidebar-ring: var(--ring);
 }
 .dark {
-  --background: #101114;
-  --foreground: #f1f1f3;
-  --card: #1a1b20;
-  --popover: #222329;
-  --muted: #27282e;
-  --muted-foreground: #aeb0ba;
-  --border: #323339;
-  --input: #44464f;
-  --primary: #96b6ff;
-  --primary-foreground: #112345;
-  --accent: #2b2e38;
-  --accent-foreground: #e4e8f3;
+  --background: #111113;
+  --foreground: #f5f5f7;
+  --card: #1c1c1e;
+  --popover: #28282a;
+  --muted: #2c2c2e;
+  --muted-foreground: #aeaeb2;
+  --border: #38383a;
+  --input: #48484a;
+  --primary: #70b7ff;
+  --primary-foreground: #071c30;
+  --accent: #303033;
+  --accent-foreground: #f5f5f7;
   color-scheme: dark;
 }
 html:not(.dark){color-scheme:light}
@@ -772,7 +772,7 @@ html:not(.dark) .pipeline-header .last-run[data-state=completed] [data-slot=badg
 html:not(.dark) .api-failure{background:#fae2e5!important;color:#a92839!important;border-color:#e6b5bd!important}
 html:not(.dark) [data-slot=tooltip-content]{background:#26334c;color:#f5f7ff;border:1px solid #43526f;box-shadow:0 6px 20px #17243b26}
 html:not(.dark) [data-slot=tooltip-content]>svg{background:#26334c;fill:#26334c}
-html:not(.dark) .login-story-copy h2 em{background-image:linear-gradient(110deg,#4355b9,#9454a0)}
+html:not(.dark) .login-story-copy h2 em{background:none;color:#284c43;-webkit-text-fill-color:currentColor}
 
 /* Use one shared surface for every processing stage in light mode. */
 html:not(.dark) .activity-stage-card{background:#edf1f9;border-color:#cbd5e5}
@@ -949,3 +949,24 @@ html.panel-motion-active::view-transition-new(workspace-panel){animation:workspa
 @keyframes selection-reveal{from{opacity:.3;transform:translateY(3px)}to{opacity:1;transform:none}}
 .table-pagination [data-slot=pagination-link]{transition:background-color 160ms,color 160ms,border-color 160ms}
 @media(prefers-reduced-motion:reduce){[data-slot=select-content],[data-slot=select-item],.table-pagination [data-slot=pagination-link]{transition:none!important}.select-selection-motion{animation:none}}
+
+/* Neutral layered surfaces shared across light and dark appearance. */
+html .work-content .pipeline-header{background:color-mix(in srgb,var(--card) 88%,transparent);border-color:var(--border);box-shadow:0 8px 28px -14px #0003,inset 0 1px 0 #ffffff0a;backdrop-filter:blur(24px) saturate(140%)}
+html:not(.dark) .work-content .pipeline-header{background:#ffffffd9;border-color:#dcdce0;box-shadow:0 8px 28px -14px #0002,inset 0 1px 0 #fff}
+html .mysql-monitor .dash-metric,html .mysql-monitor .dash-panel{background:var(--card);border:1px solid var(--border);box-shadow:0 2px 8px #00000004}
+html .mysql-monitor .activity-stage-card,html .mysql-monitor .health-outcome,html .mysql-monitor .mysql-api-total{background:color-mix(in srgb,var(--muted) 45%,var(--card));border-color:var(--border)}
+html .mysql-monitor .side-nav button.selected{background:var(--accent);color:var(--accent-foreground)}
+html:not(.dark) .health-metric-grid>div,html:not(.dark) .activity-staging-note,html:not(.dark) .embedding-summary{background:#f0f0f2;border-color:var(--border)}
+html:not(.dark) .comparison-v2-table,html:not(.dark) .comparison-v2-table td{background:var(--card);border-color:var(--border)}
+html:not(.dark) .comparison-v2-table th,html:not(.dark) .comparison-section-row,html:not(.dark) .comparison-section-row td{background:#eeeef0;border-color:var(--border)}
+html:not(.dark) .comparison-v2-table tbody tr:not(.comparison-section-row):hover{background:#f5f5f7}
+html:not(.dark) .compare-controls [data-slot=select-trigger]{background:var(--card);border-color:var(--input)}
+html:not(.dark) [data-slot=tooltip-content]{background:#2c2c2e;color:#f5f5f7;border-color:#48484a}html:not(.dark) [data-slot=tooltip-content]>svg{background:#2c2c2e;fill:#2c2c2e}
+html .workspace-flyout,html .account-menu-popup{background:var(--popover);border-color:var(--border)}
+html .editorial-time-card{background:color-mix(in srgb,var(--muted) 50%,var(--card));border-color:var(--border)}
+/* Compact settings confirmation action. */
+[data-slot=sheet-content].editorial-time-settings .editorial-time-done{align-self:flex-end;justify-self:end;flex:none;width:auto;min-width:96px;height:36px;padding:0 18px;gap:9px;border-radius:12px!important;background:var(--primary);color:var(--primary-foreground);border:1px solid color-mix(in srgb,var(--primary) 85%,var(--foreground));font-size:12px;font-weight:600;box-shadow:inset 0 1px 0 #ffffff25,0 3px 8px #00000012;transition:transform .2s ease,box-shadow .2s ease,filter .2s ease}
+[data-slot=sheet-content].editorial-time-settings .editorial-time-done:hover{transform:translateY(-1px);filter:brightness(1.05);box-shadow:inset 0 1px 0 #ffffff25,0 5px 12px #00000020}
+[data-slot=sheet-content].editorial-time-settings .editorial-time-done:active{transform:translateY(0) scale(.97);box-shadow:inset 0 1px 3px #00000015}
+[data-slot=sheet-content].editorial-time-settings .editorial-time-done:focus-visible{outline:2px solid var(--ring);outline-offset:3px}
+@media(prefers-reduced-motion:reduce){[data-slot=sheet-content].editorial-time-settings .editorial-time-done{transition:none}[data-slot=sheet-content].editorial-time-settings .editorial-time-done:is(:hover,:active){transform:none}}

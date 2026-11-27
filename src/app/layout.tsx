@@ -1,21 +1,11 @@
+import {Suspense} from "react";
+import {SessionWorkspace} from "@/components/layout/session-workspace";
 import type { Metadata } from "next";
-import { Geist, Geist_Mono, Manrope } from "next/font/google";
 import "./globals.css";
 import "./workspace.css";
 import {WorkspaceShell} from "@/components/layout/workspace-shell";
 import "./dashboard.css";
-
-const headingFont = Manrope({variable:"--font-heading-display",subsets:["latin"]});
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
+import "./surface-motion.css";
 
 export const metadata: Metadata = {
   title: {default:"Cloudbreakr Workspace",template:"%s | Cloudbreakr Workspace"},
@@ -27,9 +17,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     <html
       lang="en"
       suppressHydrationWarning
-      className={`dark ${geistSans.variable} ${geistMono.variable} ${headingFont.variable} h-full antialiased`}
+      className="dark h-full antialiased"
     >
-      <body className="min-h-full flex flex-col"><WorkspaceShell username={process.env.DASHBOARD_USERNAME||"admin"}>{children}</WorkspaceShell></body>
+      <head><script dangerouslySetInnerHTML={{__html: "(function(){try{var dark=localStorage.getItem('monitor-theme')!=='light';document.documentElement.classList.toggle('dark',dark);}catch{}})();"}}/></head>
+      <body className="min-h-full flex flex-col"><Suspense fallback={<WorkspaceShell username="">{children}</WorkspaceShell>}><SessionWorkspace>{children}</SessionWorkspace></Suspense></body>
     </html>
   );
 }

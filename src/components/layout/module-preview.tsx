@@ -2,7 +2,7 @@
 import type {PointerEvent} from 'react';
 import {Activity, ArrowRight, Check, Database, Layers, ScanSearch, SlidersHorizontal, UsersRound} from 'lucide-react';
 const modules=[
- {name:'Monitoring',title:'See the whole',emphasis:'process.',description:'Follow every stage. Investigate a run. Understand the cost.',footer:'Lambda / Fargate / Manual',Icon:Activity},
+ {name:'Instagram Post Monitoring',title:'See the whole',emphasis:'process.',description:'Follow every stage. Investigate a run. Understand the cost.',footer:'Lambda / Manual',Icon:Activity},
  {name:'Influencer search',title:'Find your',emphasis:'people.',description:'Explore creators through their audience, interests and content.',footer:'Creator discovery',Icon:UsersRound},
  {name:'Post search',title:'Good content.',emphasis:'Within reach.',description:'Find the posts that matter, with the context to understand them.',footer:'Content discovery',Icon:ScanSearch},
 ];
