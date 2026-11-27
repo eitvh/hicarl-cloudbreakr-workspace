@@ -188,9 +188,9 @@ h1,h2,h3,[data-slot=dialog-title],[data-slot=sheet-title]{font-family:var(--font
 
 /* Compact windows: keep only the navigation bar sticky, with normal page flow below. */
 @media(max-width:1100px){
- html .work-content .mysql-monitor>.pipeline-header{display:contents;position:static!important;backdrop-filter:none;box-shadow:none}
- .mysql-monitor>.pipeline-header>.dash-header{position:sticky;top:12px;z-index:25;flex:none;margin:0;padding:12px 16px;min-height:62px;border:1px solid var(--surface-edge);border-radius:18px;background:var(--popover);box-shadow:0 6px 20px #0002}
- .mysql-monitor>.pipeline-header>.dash-heading{padding:12px 4px;margin:0;gap:16px}
+ html .work-content .mysql-monitor>.pipeline-header{display:flex;flex-direction:column;position:sticky!important;top:12px;z-index:25;padding:0 16px;border:1px solid var(--surface-edge);border-radius:22px;background:var(--popover);box-shadow:0 8px 24px #0002;gap:0}
+ .mysql-monitor>.pipeline-header>.dash-header{position:static;flex:none;margin:0;padding:12px 0;min-height:62px;border:0;border-bottom:1px solid var(--border);border-radius:0;background:transparent;box-shadow:none}
+ .mysql-monitor>.pipeline-header>.dash-heading{padding:16px 0;margin:0;gap:14px}
  .work-content .dash-shell:has(.mysql-monitor){scroll-padding-top:90px}
  .mysql-monitor .activity-health-panel .mysql-api-summary{display:grid;grid-template-columns:minmax(140px,.8fr) minmax(0,1.2fr);gap:14px;align-items:stretch}
  .mysql-monitor .mysql-api-summary .mysql-api-total{flex-direction:column;justify-content:center;gap:8px;padding:20px;min-width:0;border-radius:14px}
@@ -203,8 +203,8 @@ h1,h2,h3,[data-slot=dialog-title],[data-slot=sheet-title]{font-family:var(--font
  .mysql-monitor .activity-stage-details{align-self:end;width:100%}
 }
 @media(max-width:600px){
- .mysql-monitor>.pipeline-header>.dash-header{padding:10px 12px;min-height:58px;top:8px;border-radius:16px;gap:10px}
- .mysql-monitor>.pipeline-header>.dash-heading{padding:8px 0}
+ html .work-content .mysql-monitor>.pipeline-header{top:8px;padding-inline:12px;border-radius:20px}.mysql-monitor>.pipeline-header>.dash-header{padding:10px 0;min-height:58px;border-radius:0;gap:10px}
+ .mysql-monitor>.pipeline-header>.dash-heading{padding:12px 0}
  .mysql-monitor .activity-health-panel .health-metric-grid>div{padding:12px 9px}
  .mysql-monitor .activity-health-panel .health-metric-grid strong{font-size:16px}
  .mysql-monitor .activity-health-panel .mysql-api-summary{grid-template-columns:minmax(105px,.8fr) minmax(0,1.2fr);gap:10px}
@@ -426,3 +426,31 @@ html .mysql-monitor .mysql-settings-trigger:hover,.docs-download-float:hover{tra
 @keyframes live-signal-loop{0%{stroke-dashoffset:380;opacity:.25}40%,65%{stroke-dashoffset:0;opacity:1}90%,100%{stroke-dashoffset:-380;opacity:.25}}
 @keyframes live-signal-ring{0%{transform:scale(.86);opacity:.2}35%{opacity:.9}100%{transform:scale(1.15);opacity:0}}
 @media(prefers-reduced-motion:reduce){.live-header-art path,.live-header-art>span{animation:none;stroke-dashoffset:0}}
+
+.monitor-selection-empty{flex:1;min-height:260px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:40px 24px;gap:14px}.monitor-selection-empty>span{display:grid;place-items:center;width:56px;height:56px;border-radius:18px;background:var(--muted);color:var(--primary)}.monitor-selection-empty h2{font-size:23px;letter-spacing:-.03em;font-weight:600}.monitor-selection-empty p{max-width:380px;font-size:14px;line-height:1.7;color:var(--muted-foreground)}.select-live-pill{display:inline-flex;align-items:center;gap:5px;flex-shrink:0;margin-left:7px;border:1px solid #ef526b35;background:#ef526b12;color:#e13e59;border-radius:999px;padding:2px 7px;font-size:10px;line-height:1.4}.select-live-pill i{width:5px;height:5px;border-radius:50%;background:currentColor;animation:select-live-pulse 1.8s ease-in-out infinite}@keyframes select-live-pulse{50%{box-shadow:0 0 0 3px #ef526b20;opacity:.55}}@media(prefers-reduced-motion:reduce){.select-live-pill i{animation:none}}
+
+/* Editorial empty state; decorative motion does not represent live data. */
+.monitor-selection-empty{gap:12px;padding-block:32px}
+.run-selection-art{position:relative;width:min(320px,80vw);height:218px;margin-bottom:14px;isolation:isolate}
+.run-art-back{position:absolute;inset:14px 16px 24px;border-radius:20px;background:color-mix(in srgb,#9c85ba 25%,var(--card));border:1px solid color-mix(in srgb,#9c85ba 35%,var(--border));transform:rotate(-7deg);animation:run-art-back-float 7s ease-in-out infinite}
+.run-art-card{position:absolute;inset:8px 9px 20px;padding:20px;border-radius:18px;background:linear-gradient(140deg,#dce7dc,#d0dedc 60%,#d5dce6);color:#34554a;border:1px solid #ffffff35;box-shadow:0 18px 30px #0002;transform:rotate(3deg);animation:run-art-card-float 6s ease-in-out infinite}
+.dark .run-art-card{background:linear-gradient(140deg,#30463e,#293e3b 60%,#303d4e);color:#c0d8ca;border-color:#ffffff14}
+.run-art-top{display:flex;align-items:center;justify-content:space-between;font-size:9px;letter-spacing:.13em}
+.run-art-dots{display:flex;gap:4px}.run-art-dots i{width:4px;height:4px;background:currentColor;opacity:.4;border-radius:50%}
+.run-art-card>svg{width:100%;height:65px;margin-block:17px 10px;overflow:visible}.run-art-grid{stroke:currentColor;opacity:.12;stroke-width:1}.run-art-line{stroke:#659d8b;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:360;animation:run-art-trace 5s ease-in-out infinite}.dark .run-art-line{stroke:#b0cdb9}
+.run-art-stages{display:flex;align-items:center;justify-content:center;gap:13px}.run-art-stages>span{display:grid;place-items:center;width:32px;height:32px;border-radius:10px;background:#5289a32b;color:#49748a}.run-art-stages>span:nth-of-type(2){background:#a180bb33;color:#80619e}.run-art-stages>span:nth-of-type(3){background:#c7994133;color:#927536}.dark .run-art-stages>span{color:#abcfe5}.dark .run-art-stages>span:nth-of-type(2){color:#d5bce9}.dark .run-art-stages>span:nth-of-type(3){color:#ead49d}.run-art-stages>i{width:28px;height:1px;background:currentColor;opacity:.25}
+.run-art-tag{position:absolute;right:-5px;bottom:2px;display:flex;align-items:center;gap:8px;padding:12px 16px;border-radius:12px;background:var(--popover);color:var(--foreground);border:1px solid var(--border);box-shadow:0 8px 20px #0002;font-size:11px;transform:rotate(-4deg);animation:run-art-tag-float 6s .5s ease-in-out infinite}
+@keyframes run-art-card-float{50%{transform:translateY(-6px) rotate(1deg)}}
+@keyframes run-art-back-float{50%{transform:translateY(3px) rotate(-10deg)}}
+@keyframes run-art-tag-float{50%{transform:translateY(-4px) rotate(-1deg)}}
+@keyframes run-art-trace{0%{stroke-dashoffset:360;opacity:.3}45%,75%{stroke-dashoffset:0;opacity:1}100%{stroke-dashoffset:-360;opacity:.3}}
+@media(max-height:750px) and (min-width:1101px){.run-selection-art{height:185px;width:280px;transform:scale(.9);margin-bottom:0}.monitor-selection-empty{padding-block:16px}}
+@media(prefers-reduced-motion:reduce){.run-art-back,.run-art-card,.run-art-tag,.run-art-line{animation:none}}
+
+/* Reveal the selected run once, without remounting on refresh or tab changes. */
+.mysql-monitor .monitor-selection-empty{transition:opacity .22s ease,transform .28s cubic-bezier(.22,1,.36,1)}
+.mysql-monitor[data-applying=true] .monitor-selection-empty{opacity:0;transform:translateY(-8px);pointer-events:none}
+.mysql-monitor .run-reveal-metrics{animation:run-results-arrive .46s cubic-bezier(.22,1,.36,1) both}
+.mysql-monitor .run-reveal-body{animation:run-results-arrive .55s .07s cubic-bezier(.22,1,.36,1) both}
+@keyframes run-results-arrive{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+@media(prefers-reduced-motion:reduce){.mysql-monitor .monitor-selection-empty{transition:none}.mysql-monitor .run-reveal-metrics,.mysql-monitor .run-reveal-body{animation:none}.mysql-monitor[data-applying=true] .monitor-selection-empty{transform:none}}
